@@ -24,6 +24,8 @@ public class TimerService extends Service {
     }
     @Override public int onStartCommand(Intent intent,int flags,int startId){
         String action=intent==null?"RESTORE":intent.getAction();
+        // Even late control intents must satisfy Android's foreground-start contract.
+        startForeground(1,notification());
         if("START".equals(action)){
             if(engine==null||engine.finished){engine=new Workout.Engine(Workout.compile(Store.load(this)),now());recorded=false;}
         }else if(engine!=null&&!engine.finished){
@@ -47,6 +49,7 @@ public class TimerService extends Service {
         handler.postDelayed(this,200);
     }};
     private Notification notification(){
+        if(engine==null||engine.finished)return new Notification.Builder(this,CHANNEL).setSmallIcon(R.drawable.ic_app).setContentTitle("力量计时").setContentText("正在准备训练").setOnlyAlertOnce(true).setOngoing(true).build();
         Workout.Stage s=engine.current();
         PendingIntent open=PendingIntent.getActivity(this,0,new Intent(this,MainActivity.class),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         String label=engine.paused?"继续":"暂停";
