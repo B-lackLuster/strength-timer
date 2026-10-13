@@ -26,10 +26,10 @@ import org.junit.runner.RunWith;
 public class AppTest {
     Context context;
     @Before public void reset(){context=InstrumentationRegistry.getInstrumentation().getTargetContext();InstrumentationRegistry.getInstrumentation().runOnMainSync(()->{context.stopService(new Intent(context,TimerService.class));TimerService.engine=null;Store.prefs(context).edit().clear().commit();});SystemClock.sleep(200);}
-    void shot(String name)throws Exception {Bitmap b=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();File dir=new File(context.getExternalFilesDir(null),"screenshots");dir.mkdirs();try(FileOutputStream out=new FileOutputStream(new File(dir,name+".png"))){b.compress(Bitmap.CompressFormat.PNG,100,out);}b.recycle();}
+    void shot(String name)throws Exception {InstrumentationRegistry.getInstrumentation().waitForIdleSync();SystemClock.sleep(600);Bitmap b=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();File dir=new File(context.getExternalFilesDir(null),"screenshots");dir.mkdirs();try(FileOutputStream out=new FileOutputStream(new File(dir,name+".png"))){b.compress(Bitmap.CompressFormat.PNG,100,out);}b.recycle();}
     @Test public void editPlanAndInsertRest()throws Exception{
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
-            shot("01-plan");onView(withText("平板支撑")).perform(click());onView(withText("1分")).perform(click());onView(withText("保存")).perform(click());assertEquals(60,Store.load(context).get(0).seconds);
+            onView(withText("平板支撑")).check(matches(isDisplayed()));shot("01-plan");onView(withText("平板支撑")).perform(click());onView(withText("1分")).perform(click());onView(withText("保存")).perform(click());assertEquals(60,Store.load(context).get(0).seconds);
             onView(withText("＋ 休息")).perform(scrollTo(),click());onView(withText("大休息")).perform(click());onView(withText("保存")).perform(click());assertEquals(4,Store.load(context).size());assertTrue(Store.load(context).get(3).rest);assertTrue(Store.load(context).get(3).big);
             onView(withText("＋ 动作")).perform(scrollTo(),click());onView(withText("保存")).perform(click());assertEquals(5,Store.load(context).size());
         }
