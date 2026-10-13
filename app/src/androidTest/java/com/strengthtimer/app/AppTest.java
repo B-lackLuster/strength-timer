@@ -46,7 +46,7 @@ public class AppTest {
     @Test public void automaticallyTransitionsAndCompletes()throws Exception{
         Store.save(context,Arrays.asList(new Workout.Item("快速验证",1,2,1,1)));
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
-            onView(withText("开始训练 →")).perform(scrollTo(),click());a.moveToState(androidx.lifecycle.Lifecycle.State.CREATED);SystemClock.sleep(5000);a.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED);SystemClock.sleep(300);onView(withText("训练完成 ✓")).check(matches(isDisplayed()));assertEquals(2,TimerService.engine.completed);assertEquals(1,Store.history(context).length());assertEquals(2,Store.history(context).getJSONObject(0).getInt("count"));shot("05-complete");
+            onView(withText("开始训练 →")).perform(scrollTo(),click());a.moveToState(androidx.lifecycle.Lifecycle.State.CREATED);SystemClock.sleep(5000);a.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED);SystemClock.sleep(300);onView(withText("训练完成 ✓")).check(matches(isDisplayed()));assertEquals(2,TimerService.engine.completed);assertEquals(1,Store.history(context).length());assertEquals(2,Store.history(context).getJSONObject(0).getInt("count"));shot("05-complete");context.startForegroundService(new Intent(context,TimerService.class).setAction("SKIP"));SystemClock.sleep(400);assertEquals(1,Store.history(context).length());
         }
     }
     private View findText(View view,String value){

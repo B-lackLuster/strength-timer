@@ -20,6 +20,7 @@ public class TimerService extends Service {
         lock=((PowerManager)getSystemService(POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"strength:timer");
         try{tone=new ToneGenerator(AudioManager.STREAM_ALARM,70);}catch(RuntimeException ignored){}
         if(engine==null)engine=Store.restore(this);
+        recorded=engine!=null&&engine.finished;
     }
     @Override public int onStartCommand(Intent intent,int flags,int startId){
         String action=intent==null?"RESTORE":intent.getAction();
