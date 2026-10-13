@@ -11,6 +11,7 @@ import static androidx.test.espresso.Espresso.*;
 import static androidx.test.espresso.action.ViewActions.*;
 import static androidx.test.espresso.assertion.ViewAssertions.*;
 import static androidx.test.espresso.matcher.ViewMatchers.*;
+import static androidx.test.espresso.matcher.RootMatchers.isDialog;
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 import android.content.Context;
@@ -39,8 +40,8 @@ public class AppTest {
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
             onView(withText("开始训练 →")).perform(click());SystemClock.sleep(700);shot("02-training");
             onView(withText("暂停")).perform(scrollTo(),click());SystemClock.sleep(500);assertTrue(TimerService.engine.paused);
-            onView(withText("跳过当前阶段")).perform(click());onView(withText("跳过")).perform(click());SystemClock.sleep(500);assertEquals(0,TimerService.engine.completed);assertEquals(1,TimerService.engine.skipped);assertEquals("小休息",TimerService.engine.current().kind);shot("03-rest-paused");
-            onView(withText("结束本次训练")).perform(scrollTo(),click());onView(withText("结束并保存")).perform(click());SystemClock.sleep(700);assertEquals(1,Store.history(context).length());assertEquals(0,Store.history(context).getJSONObject(0).getInt("count"));shot("04-history");
+            onView(withText("跳过当前阶段")).perform(scrollTo(),click());onView(withText("跳过")).inRoot(isDialog()).perform(click());SystemClock.sleep(500);assertEquals(0,TimerService.engine.completed);assertEquals(1,TimerService.engine.skipped);assertEquals("小休息",TimerService.engine.current().kind);shot("03-rest-paused");
+            onView(withText("结束本次训练")).perform(scrollTo(),click());onView(withText("结束并保存")).inRoot(isDialog()).perform(click());SystemClock.sleep(700);assertEquals(1,Store.history(context).length());assertEquals(0,Store.history(context).getJSONObject(0).getInt("count"));shot("04-history");
         }
     }
     @Test public void automaticallyTransitionsAndCompletes()throws Exception{
