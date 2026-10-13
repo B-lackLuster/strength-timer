@@ -67,6 +67,7 @@ jobs:
           api-level: 35
           arch: x86_64
           profile: pixel_6
+          cores: 4
           disable-animations: true
           script: |
             adb shell input keyevent KEYCODE_WAKEUP
@@ -74,6 +75,10 @@ jobs:
             adb install apks/debug/app-debug.apk
             adb install apks/androidTest/debug/app-debug-androidTest.apk
             adb shell pm grant com.strengthtimer.app android.permission.POST_NOTIFICATIONS
+            # Fresh AVD startup can leave Quickstep's ANR dialog above every app.
+            # Reset only the emulator launcher; never suppress errors from the app.
+            sleep 15
+            adb shell am force-stop com.android.launcher3
             adb shell am instrument -w com.strengthtimer.app.test/androidx.test.runner.AndroidJUnitRunner | tee instrument-results.txt
             adb logcat -d > device-logcat.txt
             adb shell dumpsys window > device-window.txt
