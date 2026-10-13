@@ -69,10 +69,16 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
+            adb shell input keyevent KEYCODE_WAKEUP
+            adb shell wm dismiss-keyguard
             adb install apks/debug/app-debug.apk
             adb install apks/androidTest/debug/app-debug-androidTest.apk
             adb shell pm grant com.strengthtimer.app android.permission.POST_NOTIFICATIONS
             adb shell am instrument -w com.strengthtimer.app.test/androidx.test.runner.AndroidJUnitRunner | tee instrument-results.txt
+            adb logcat -d > device-logcat.txt
+            adb shell dumpsys window > device-window.txt
+            adb shell screencap -p /sdcard/test-screen.png
+            adb pull /sdcard/test-screen.png test-screen.png
             adb pull /sdcard/Android/data/com.strengthtimer.app/files/screenshots screenshots
             grep -q 'OK (6 tests)' instrument-results.txt
       - uses: actions/upload-artifact@v4
@@ -81,4 +87,7 @@ jobs:
           name: device-test-results
           path: |
             instrument-results.txt
+            device-logcat.txt
+            device-window.txt
+            test-screen.png
             screenshots
