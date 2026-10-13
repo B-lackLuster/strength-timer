@@ -1,6 +1,11 @@
 package com.strengthtimer.app;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.core.app.ActivityScenario;
+import androidx.test.espresso.UiController;
+import androidx.test.espresso.ViewAction;
+import android.view.*;
+import android.widget.TextView;
+import org.hamcrest.Matcher;
 import androidx.test.platform.app.InstrumentationRegistry;
 import static androidx.test.espresso.Espresso.*;
 import static androidx.test.espresso.action.ViewActions.*;
@@ -41,7 +46,31 @@ public class AppTest {
     @Test public void automaticallyTransitionsAndCompletes()throws Exception{
         Store.save(context,Arrays.asList(new Workout.Item("快速验证",1,2,1,1)));
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
-            onView(withText("开始训练 →")).perform(scrollTo(),click());SystemClock.sleep(5000);onView(withText("训练完成 ✓")).check(matches(isDisplayed()));assertEquals(2,TimerService.engine.completed);assertEquals(1,Store.history(context).length());assertEquals(2,Store.history(context).getJSONObject(0).getInt("count"));shot("05-complete");
+            onView(withText("开始训练 →")).perform(scrollTo(),click());a.moveToState(androidx.lifecycle.Lifecycle.State.CREATED);SystemClock.sleep(5000);a.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED);SystemClock.sleep(300);onView(withText("训练完成 ✓")).check(matches(isDisplayed()));assertEquals(2,TimerService.engine.completed);assertEquals(1,Store.history(context).length());assertEquals(2,Store.history(context).getJSONObject(0).getInt("count"));shot("05-complete");
+        }
+    }
+    private View findText(View view,String value){
+        if(view instanceof TextView && value.contentEquals(((TextView)view).getText()))return view;
+        if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int n=0;n<group.getChildCount();n++){View found=findText(group.getChildAt(n),value);if(found!=null)return found;}}
+        return null;
+    }
+    @Test public void longPressDragReordersPlan(){
+        try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
+            onView(withContentDescription("长按拖动 平板支撑")).perform(new ViewAction(){
+                public Matcher<View> getConstraints(){return isDisplayed();}
+                public String getDescription(){return "Long press exercise handle and drag onto next exercise";}
+                public void perform(UiController controller,View view){
+                    View target=findText(view.getRootView(),"深蹲");assertNotNull(target);
+                    int[] from=new int[2],to=new int[2];view.getLocationOnScreen(from);target.getLocationOnScreen(to);
+                    float x=from[0]+view.getWidth()/2f,y=from[1]+view.getHeight()/2f,endY=to[1]+target.getHeight()/2f;
+                    long down=SystemClock.uptimeMillis();
+                    send(controller,down,MotionEvent.ACTION_DOWN,x,y);controller.loopMainThreadForAtLeast(750);
+                    for(int n=1;n<=12;n++){send(controller,down,MotionEvent.ACTION_MOVE,x,y+(endY-y)*n/12f);controller.loopMainThreadForAtLeast(40);}
+                    send(controller,down,MotionEvent.ACTION_UP,x,endY);controller.loopMainThreadForAtLeast(400);
+                }
+                private void send(UiController c,long down,int action,float x,float y){MotionEvent e=MotionEvent.obtain(down,SystemClock.uptimeMillis(),action,x,y,0);e.setSource(InputDevice.SOURCE_TOUCHSCREEN);try{c.injectMotionEvent(e);}catch(Exception error){throw new RuntimeException(error);}finally{e.recycle();}}
+            });
+            assertEquals("深蹲",Store.load(context).get(0).name);assertEquals("平板支撑",Store.load(context).get(1).name);
         }
     }
     @After public void cleanup(){InstrumentationRegistry.getInstrumentation().runOnMainSync(()->context.stopService(new Intent(context,TimerService.class)));}

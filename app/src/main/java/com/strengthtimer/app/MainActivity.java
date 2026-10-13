@@ -33,7 +33,7 @@ public class MainActivity extends Activity {
     private int dp(float n){return (int)(n*getResources().getDisplayMetrics().density+.5f);}
     @Override public void onCreate(Bundle b){super.onCreate(b);plan=Store.load(this);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        root=new LinearLayout(this);root.setOrientation(1);root.setBackgroundColor(BG);root.setPadding(dp(20),0,dp(20),0);
+        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(BG);root.setPadding(dp(20),0,dp(20),0);
         if(Build.VERSION.SDK_INT>=30)root.setOnApplyWindowInsetsListener((v,insets)->{android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars());root.setPadding(dp(20),bars.top,dp(20),bars.bottom);return insets;});
         // API 26–29 use legacy insets; modern edge-to-edge devices use the same safe areas.
         if(Build.VERSION.SDK_INT<30)root.setOnApplyWindowInsetsListener((v,insets)->{root.setPadding(dp(20),insets.getSystemWindowInsetTop(),dp(20),insets.getSystemWindowInsetBottom());return insets;});
@@ -45,7 +45,7 @@ public class MainActivity extends Activity {
     @Override protected void onPause(){super.onPause();handler.removeCallbacks(refresh);}
     private boolean active(){return TimerService.engine!=null&&!TimerService.engine.finished;}
     private GradientDrawable background(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
-    private LinearLayout column(){LinearLayout v=new LinearLayout(this);v.setOrientation(1);return v;}
+    private LinearLayout column(){LinearLayout v=new LinearLayout(this);v.setOrientation(LinearLayout.VERTICAL);return v;}
     private LinearLayout row(){LinearLayout v=new LinearLayout(this);v.setGravity(Gravity.CENTER_VERTICAL);return v;}
     private TextView text(String value,int size,int color){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(color);t.setGravity(Gravity.CENTER_VERTICAL);t.setPadding(0,dp(3),0,dp(3));return t;}
     private TextView bold(String value,int size,int color){TextView t=text(value,size,color);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);return t;}

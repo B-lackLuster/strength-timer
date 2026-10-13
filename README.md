@@ -21,7 +21,7 @@ GitHub Actions → Build Android APK → 成功运行 → strength-timer-apk，�
 
 ## 云端构建
 本机无需 Android SDK、Android Studio 或模拟器。GitHub Actions 使用 JDK 17、Gradle 8.9、Android Gradle Plugin 8.7.3、Android SDK 35。
-推送 main 或手动运行工作流会执行 8 个纯 Java 计时测试、Android lint、签名 release 构建，以及 Android 15 模拟器的 3 项界面测试，输出测试报告和界面截图。
+推送 main 或手动运行工作流会执行 8 个纯 Java 计时测试、Android lint、签名 release 构建，以及 Android 15 模拟器的 4 项界面测试（含拖动排序和后台计时），输出测试报告和界面截图。
 
 构建兼容性依据：[Android 官方 AGP 8.7 说明](https://developer.android.com/build/releases/agp-8-7-0-release-notes)。后台服务声明遵循 [Android 官方前台服务类型说明](https://developer.android.com/about/versions/14/changes/fgs-types-required)。
 

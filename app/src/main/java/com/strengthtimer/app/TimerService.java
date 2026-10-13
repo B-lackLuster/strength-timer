@@ -28,7 +28,7 @@ public class TimerService extends Service {
         }else if(engine!=null&&!engine.finished){
             if("PAUSE".equals(action)){if(engine.paused)engine.resume(now());else engine.pause(now());}
             if("SKIP".equals(action))engine.skip(now());
-            if("STOP".equals(action)){engine.tick(now());Store.finish(this,engine,false);recorded=true;engine=null;shutdown();return START_NOT_STICKY;}
+            if("STOP".equals(action)){engine.tick(now());Store.finish(this,engine,engine.finished);recorded=true;engine=null;shutdown();return START_NOT_STICKY;}
         }
         if(engine==null||engine.finished){if(engine!=null&&!recorded){Store.finish(this,engine,true);recorded=true;signal();}shutdown();return START_NOT_STICKY;}
         startForeground(1,notification());
