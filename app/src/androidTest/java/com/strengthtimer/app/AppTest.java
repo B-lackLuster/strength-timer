@@ -37,7 +37,7 @@ public class AppTest {
     @Test public void runPauseSkipAndSaveHistory()throws Exception{
         Store.save(context,Arrays.asList(new Workout.Item("测试平板",30,2,20,10)));
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
-            onView(withText("开始训练 →")).perform(scrollTo(),click());SystemClock.sleep(700);shot("02-training");
+            onView(withText("开始训练 →")).perform(click());SystemClock.sleep(700);shot("02-training");
             onView(withText("暂停")).perform(scrollTo(),click());SystemClock.sleep(500);assertTrue(TimerService.engine.paused);
             onView(withText("跳过当前阶段")).perform(click());onView(withText("跳过")).perform(click());SystemClock.sleep(500);assertEquals(0,TimerService.engine.completed);assertEquals(1,TimerService.engine.skipped);assertEquals("小休息",TimerService.engine.current().kind);shot("03-rest-paused");
             onView(withText("结束本次训练")).perform(scrollTo(),click());onView(withText("结束并保存")).perform(click());SystemClock.sleep(700);assertEquals(1,Store.history(context).length());assertEquals(0,Store.history(context).getJSONObject(0).getInt("count"));shot("04-history");
@@ -46,7 +46,7 @@ public class AppTest {
     @Test public void automaticallyTransitionsAndCompletes()throws Exception{
         Store.save(context,Arrays.asList(new Workout.Item("快速验证",1,2,1,1)));
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
-            onView(withText("开始训练 →")).perform(scrollTo(),click());a.moveToState(androidx.lifecycle.Lifecycle.State.CREATED);SystemClock.sleep(5000);a.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED);SystemClock.sleep(300);onView(withText("训练完成 ✓")).check(matches(isDisplayed()));assertEquals(2,TimerService.engine.completed);assertEquals(1,Store.history(context).length());assertEquals(2,Store.history(context).getJSONObject(0).getInt("count"));shot("05-complete");context.startForegroundService(new Intent(context,TimerService.class).setAction("SKIP"));SystemClock.sleep(400);assertEquals(1,Store.history(context).length());
+            onView(withText("开始训练 →")).perform(click());a.moveToState(androidx.lifecycle.Lifecycle.State.CREATED);SystemClock.sleep(5000);a.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED);SystemClock.sleep(300);onView(withText("训练完成 ✓")).check(matches(isDisplayed()));assertEquals(2,TimerService.engine.completed);assertEquals(1,Store.history(context).length());assertEquals(2,Store.history(context).getJSONObject(0).getInt("count"));shot("05-complete");context.startForegroundService(new Intent(context,TimerService.class).setAction("SKIP"));SystemClock.sleep(400);assertEquals(1,Store.history(context).length());
         }
     }
     private View findText(View view,String value){
@@ -63,7 +63,7 @@ public class AppTest {
             onView(withText("使用方案")).perform(click());assertEquals("深蹲",Store.load(context).get(0).name);
             onView(withText("切换方案")).perform(click());onView(withText("已保存 · My workout")).perform(click());
             onView(withText("使用方案")).perform(click());assertEquals("平板支撑",Store.load(context).get(0).name);
-            onView(withText("开始训练 →")).perform(scrollTo(),click());SystemClock.sleep(500);
+            onView(withText("开始训练 →")).perform(click());SystemClock.sleep(500);
             onView(withText("训练计划")).perform(click());onView(withText("切换方案")).perform(click());
             assertNotNull(TimerService.engine);assertEquals("平板支撑",TimerService.engine.current().name);
         }
@@ -85,6 +85,24 @@ public class AppTest {
                 private void send(UiController c,long down,int action,float x,float y){MotionEvent e=MotionEvent.obtain(down,SystemClock.uptimeMillis(),action,x,y,0);e.setSource(InputDevice.SOURCE_TOUCHSCREEN);try{c.injectMotionEvent(e);}catch(Exception error){throw new RuntimeException(error);}finally{e.recycle();}}
             });
             assertEquals("深蹲",Store.load(context).get(0).name);assertEquals("平板支撑",Store.load(context).get(1).name);
+        }
+    }
+    @Test public void fixedStartAndSettingsPersist()throws Exception{
+        List<Workout.Item> longPlan=new ArrayList<>();for(int n=0;n<12;n++)longPlan.add(new Workout.Item("动作 "+n,30,2,10,20));Store.save(context,longPlan);
+        try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
+            int[] before=new int[2],after=new int[2];
+            onView(withText("开始训练 →")).check(matches(isDisplayed()));
+            a.onActivity(activity->{View start=findText(activity.getWindow().getDecorView(),"开始训练 →");start.getLocationOnScreen(before);assertFalse(start.getParent() instanceof android.widget.ScrollView);});
+            onView(withText("动作 11")).perform(scrollTo());
+            a.onActivity(activity->findText(activity.getWindow().getDecorView(),"开始训练 →").getLocationOnScreen(after));assertArrayEquals(before,after);shot("07-fixed-start");
+            onView(withText("设置")).perform(click());shot("06-settings");
+            onView(withContentDescription("阶段结束提示音")).perform(click());assertFalse(Store.prefs(context).getBoolean("sound",true));
+            onView(withContentDescription("阶段结束振动")).perform(click());assertFalse(Store.prefs(context).getBoolean("vibrate",true));
+            onView(withContentDescription("提示音音量")).perform(swipeRight());assertTrue(Store.prefs(context).getInt("sound_volume",55)>55);
+            onView(withText("试听训练")).perform(scrollTo(),click());onView(withText("试听休息")).perform(click());onView(withText("试听完成")).perform(click());
+            onView(withText("完成")).perform(click());a.recreate();onView(withText("设置")).perform(click());
+            onView(withContentDescription("阶段结束提示音")).check(matches(isNotChecked()));onView(withContentDescription("阶段结束振动")).check(matches(isNotChecked()));
+            onView(withText("完成")).perform(click());onView(withText("开始训练 →")).perform(click());SystemClock.sleep(500);assertNotNull(TimerService.engine);
         }
     }
     @After public void cleanup(){InstrumentationRegistry.getInstrumentation().runOnMainSync(()->context.stopService(new Intent(context,TimerService.class)));}

@@ -23,6 +23,7 @@ public class MainActivity extends Activity {
     private String page="plan";
     private boolean wasFinished=false;
     private ScrollView scroller;
+    private Dialog settingsDialog;
     private final Runnable refresh=new Runnable(){public void run(){
         Workout.Engine e=TimerService.engine;
         if(page.equals("timer")&&e!=null){if(e.finished&&!wasFinished){wasFinished=true;showTimer();}else updateTimer();}
@@ -38,12 +39,13 @@ public class MainActivity extends Activity {
         if(Build.VERSION.SDK_INT>=30)root.setOnApplyWindowInsetsListener((v,insets)->{android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars());root.setPadding(dp(20),bars.top,dp(20),bars.bottom);return insets;});
         // API 26–29 use legacy insets; modern edge-to-edge devices use the same safe areas.
         if(Build.VERSION.SDK_INT<30)root.setOnApplyWindowInsetsListener((v,insets)->{root.setPadding(dp(20),insets.getSystemWindowInsetTop(),dp(20),insets.getSystemWindowInsetBottom());return insets;});
-        setContentView(root);root.requestApplyInsets();
+        setContentView(root);root.requestApplyInsets();Chime.init(this);
         if(TimerService.engine==null)TimerService.engine=Store.restore(this);
         if(TimerService.engine!=null&&!TimerService.engine.finished)showTimer();else showPlan();
     }
     @Override protected void onResume(){super.onResume();handler.removeCallbacks(refresh);handler.post(refresh);}
     @Override protected void onPause(){super.onPause();handler.removeCallbacks(refresh);}
+    @Override protected void onDestroy(){if(settingsDialog!=null)settingsDialog.dismiss();super.onDestroy();}
     private boolean active(){return TimerService.engine!=null&&!TimerService.engine.finished;}
     private GradientDrawable background(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));if(color==CARD)d.setStroke(dp(1),0xff344039);return d;}
     private LinearLayout column(){LinearLayout v=new LinearLayout(this);v.setOrientation(LinearLayout.VERTICAL);return v;}
@@ -57,10 +59,16 @@ public class MainActivity extends Activity {
     private void base(String selected){
         page=selected;root.removeAllViews();
         LinearLayout header=row();header.setPadding(0,dp(14),0,dp(12));TextView brand=bold("力量 / TIMER",19,ACCENT);header.addView(brand,new LinearLayout.LayoutParams(0,-2,1));TextView settings=text("设置",14,MUTED);settings.setPadding(dp(16),dp(10),0,dp(10));settings.setOnClickListener(v->settings());header.addView(settings);root.addView(header);
-        scroller=new ScrollView(this);scroller.setFillViewport(true);content=column();scroller.addView(content);root.addView(scroller,new LinearLayout.LayoutParams(-1,0,1));
+        scroller=new ScrollView(this);scroller.setFillViewport(true);styleScroll(scroller);content=column();scroller.addView(content);root.addView(scroller,new LinearLayout.LayoutParams(-1,0,1));
         nav=row();nav.setPadding(0,dp(10),0,dp(10));weighted(nav,button("训练计划",selected.equals("plan")?ACCENT:CARD,()->showPlan()));weighted(nav,button(active()?"正在计时":"计时",selected.equals("timer")?ACCENT:CARD,()->{if(TimerService.engine!=null)showTimer();else toast("先在训练计划中点击开始");}));weighted(nav,button("训练记录",selected.equals("history")?ACCENT:CARD,()->showHistory()));root.addView(nav);
     }
     private void toast(String value){Toast.makeText(this,value,Toast.LENGTH_SHORT).show();}
+    private void styleScroll(ScrollView scroll){
+        scroll.setScrollBarStyle(View.SCROLLBARS_OUTSIDE_INSET);scroll.setVerticalScrollbarPosition(View.SCROLLBAR_POSITION_RIGHT);
+        scroll.setScrollBarSize(dp(2));scroll.setScrollbarFadingEnabled(true);scroll.setScrollBarDefaultDelayBeforeFade(500);scroll.setScrollBarFadeDuration(250);
+        scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);scroll.setPadding(0,0,dp(6),0);
+        if(Build.VERSION.SDK_INT>=29){scroll.setVerticalScrollbarThumbDrawable(background(0xff53635a,2));scroll.setVerticalScrollbarTrackDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));}
+    }
     private void showPlan(){
         base("plan");content.addView(text("WORKOUT / 今日训练",12,ACCENT));content.addView(bold("今天，练得更稳。",28,TEXT));content.addView(text("长按 ≡ 拖动排序 · 点击卡片编辑",13,MUTED));gap(content,18);
         List<Workout.Stage> stages=Workout.compile(plan);long seconds=0;int sets=0;for(Workout.Stage s:stages){seconds+=s.seconds;if(s.exercise())sets++;}
@@ -91,7 +99,9 @@ public class MainActivity extends Activity {
         }
         LinearLayout add=row();weighted(add,button("＋ 动作",CARD,()->{if(active())toast("结束训练后再修改计划");else edit(-1,false,false);}));weighted(add,button("＋ 休息",CARD,()->{if(active())toast("结束训练后再修改计划");else new AlertDialog.Builder(this).setTitle("插入独立休息块").setItems(new String[]{"小休息","大休息"},(d,w)->edit(-1,true,w==1)).show();}));content.addView(add);gap(content,16);
         content.addView(text("小休息出现在组与组之间；最后一组后进入大休息。休息可设为 0 秒跳过，也可插入独立休息块自由排序。",12,MUTED));gap(content,20);
-        content.addView(button(active()?"返回正在进行的训练":"开始训练 →",ACCENT,()->{if(active()){showTimer();return;}if(setsCount()==0){toast("至少添加一个训练动作");return;}start();}));gap(content,20);
+        LinearLayout dock=column();dock.setPadding(0,dp(12),0,dp(2));dock.setBackgroundColor(BG);
+        dock.addView(button(active()?"返回正在进行的训练":"开始训练 →",ACCENT,()->{if(active()){showTimer();return;}if(setsCount()==0){toast("至少添加一个训练动作");return;}start();}));
+        root.addView(dock,root.indexOfChild(nav),new LinearLayout.LayoutParams(-1,-2));
     }
     private int setsCount(){int n=0;for(Workout.Item i:plan)if(!i.rest)n+=i.sets;return n;}
     private void savePlan(){
@@ -125,7 +135,7 @@ public class MainActivity extends Activity {
     private int number(EditText e,int low,int high){int v=Integer.parseInt(e.getText().toString().trim());if(v<low||v>high)throw new IllegalArgumentException();return v;}
     private void edit(int index,boolean rest,boolean big){
         Workout.Item item=index>=0?plan.get(index):rest?Workout.Item.rest("自由休息",big?90:30,big):new Workout.Item("平板支撑",45,3,20,60);
-        ScrollView scroll=new ScrollView(this);LinearLayout form=column();form.setPadding(dp(22),dp(12),dp(22),dp(12));form.setBackgroundColor(BG);scroll.addView(form);
+        ScrollView scroll=new ScrollView(this);styleScroll(scroll);LinearLayout form=column();form.setPadding(dp(22),dp(12),dp(22),dp(12));form.setBackgroundColor(BG);scroll.addView(form);
         EditText name=input(form,rest?"休息名称":"动作名称（可自由输入）",item.name,false);
         if(!rest){Spinner names=new Spinner(this);String[] presets={"选择常用动作…","平板支撑","深蹲","俯卧撑","靠墙静蹲","臀桥","弓步蹲","卷腹","侧平板支撑","登山跑","俄罗斯转体","哑铃推举","哑铃划船"};ArrayAdapter<String> adapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,presets);names.setAdapter(adapter);form.addView(names);names.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onNothingSelected(AdapterView<?> p){}public void onItemSelected(AdapterView<?> p,View v,int position,long id){if(position>0)name.setText(presets[position]);}});}
         EditText duration=input(form,"单次时长 / 秒（1–3600）",String.valueOf(item.seconds),true);
@@ -185,9 +195,26 @@ public class MainActivity extends Activity {
         }gap(content,16);
     }
     private void settings(){
-        LinearLayout box=column();box.setPadding(dp(24),dp(10),dp(24),dp(16));box.setBackgroundColor(BG);
-        Switch sound=new Switch(this);sound.setText("阶段结束提示音");sound.setTextColor(TEXT);sound.setChecked(Store.prefs(this).getBoolean("sound",true));box.addView(sound,new LinearLayout.LayoutParams(-1,dp(56)));sound.setOnCheckedChangeListener((b,on)->Store.prefs(this).edit().putBoolean("sound",on).apply());
-        Switch vibration=new Switch(this);vibration.setText("阶段结束振动");vibration.setTextColor(TEXT);vibration.setChecked(Store.prefs(this).getBoolean("vibrate",true));box.addView(vibration,new LinearLayout.LayoutParams(-1,dp(56)));vibration.setOnCheckedChangeListener((b,on)->Store.prefs(this).edit().putBoolean("vibrate",on).apply());
-        box.addView(text("力量计时 1.1\n离线使用 · 数据保存在本机\n提示音音量跟随手机闹钟音量",13,MUTED));new AlertDialog.Builder(this).setTitle("训练设置").setView(box).setPositiveButton("完成",null).show();
+        settingsDialog=new Dialog(this);LinearLayout sheet=column();sheet.setPadding(dp(20),dp(20),dp(20),dp(16));sheet.setBackground(background(BG,24));
+        sheet.addView(text("PREFERENCES / 偏好设置",11,ACCENT));sheet.addView(bold("训练设置",26,TEXT));sheet.addView(text("让每一次阶段切换更舒服",13,MUTED));gap(sheet,16);
+        ScrollView scroll=new ScrollView(this);styleScroll(scroll);LinearLayout box=column();scroll.addView(box);sheet.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        box.addView(settingToggle("阶段结束提示音","柔和钟声，区分训练、休息和完成","sound"));gap(box,10);
+        box.addView(settingToggle("阶段结束振动","短暂触感提醒，可独立开关","vibrate"));gap(box,10);
+        LinearLayout audio=column();audio.setPadding(dp(16),dp(12),dp(16),dp(12));audio.setBackground(background(CARD,18));
+        TextView volume=text("提示音音量 · "+Store.prefs(this).getInt("sound_volume",55)+"%",14,TEXT);audio.addView(volume);
+        SeekBar slider=new SeekBar(this);slider.setContentDescription("提示音音量");slider.setMax(100);slider.setProgress(Store.prefs(this).getInt("sound_volume",55));slider.setProgressTintList(android.content.res.ColorStateList.valueOf(ACCENT));slider.setThumbTintList(android.content.res.ColorStateList.valueOf(ACCENT));audio.addView(slider,new LinearLayout.LayoutParams(-1,dp(48)));
+        slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}public void onProgressChanged(SeekBar s,int value,boolean user){volume.setText("提示音音量 · "+value+"%");if(user)Store.prefs(MainActivity.this).edit().putInt("sound_volume",value).apply();}});
+        audio.addView(text("叠加手机闹钟音量；试听不受提示音开关影响。",12,MUTED));gap(audio,8);
+        LinearLayout previews=row();weighted(previews,button("试听训练",BG,()->Chime.play(this,Chime.TRAINING)));weighted(previews,button("试听休息",BG,()->Chime.play(this,Chime.REST)));weighted(previews,button("试听完成",BG,()->Chime.play(this,Chime.COMPLETE)));audio.addView(previews);box.addView(audio);gap(box,14);
+        box.addView(text("力量计时 1.2.0 · 离线使用\n方案与训练记录保存在本机",12,MUTED));gap(sheet,12);sheet.addView(button("完成",ACCENT,()->settingsDialog.dismiss()));settingsDialog.setContentView(sheet);
+        Window window=settingsDialog.getWindow();if(window!=null){window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);WindowManager.LayoutParams params=window.getAttributes();params.dimAmount=.6f;params.gravity=Gravity.BOTTOM;window.setAttributes(params);}
+        settingsDialog.show();if(window!=null)window.setLayout(getResources().getDisplayMetrics().widthPixels-dp(24),Math.min(dp(570),(int)(getResources().getDisplayMetrics().heightPixels*.82f)));
+    }
+    private View settingToggle(String title,String subtitle,String key){
+        LinearLayout card=row();card.setPadding(dp(16),dp(12),dp(12),dp(12));card.setBackground(background(CARD,18));LinearLayout labels=column();labels.addView(bold(title,15,TEXT));labels.addView(text(subtitle,12,MUTED));card.addView(labels,new LinearLayout.LayoutParams(0,-2,1));
+        Switch toggle=new Switch(this);toggle.setContentDescription(title);toggle.setMinHeight(dp(48));toggle.setMinWidth(dp(48));toggle.setChecked(Store.prefs(this).getBoolean(key,true));
+        int[][] states={new int[]{android.R.attr.state_checked},new int[]{}};
+        toggle.setThumbTintList(new android.content.res.ColorStateList(states,new int[]{ACCENT,MUTED}));toggle.setTrackTintList(new android.content.res.ColorStateList(states,new int[]{0xff687f42,0xff455249}));card.addView(toggle);
+        toggle.setOnCheckedChangeListener((b,on)->Store.prefs(this).edit().putBoolean(key,on).apply());card.setOnClickListener(v->toggle.setChecked(!toggle.isChecked()));return card;
     }
 }

@@ -9,7 +9,6 @@ public class TimerService extends Service {
     static Workout.Engine engine;
     private Handler handler;
     private PowerManager.WakeLock lock;
-    private ToneGenerator tone;
     private boolean recorded=false;
     private long lastSave=0;
     static final String CHANNEL="training";
@@ -18,7 +17,7 @@ public class TimerService extends Service {
         super.onCreate();handler=new Handler(getMainLooper());
         getSystemService(NotificationManager.class).createNotificationChannel(new NotificationChannel(CHANNEL,"训练计时",NotificationManager.IMPORTANCE_LOW));
         lock=((PowerManager)getSystemService(POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"strength:timer");
-        try{tone=new ToneGenerator(AudioManager.STREAM_ALARM,70);}catch(RuntimeException ignored){}
+        Chime.init(this);
         if(engine==null)engine=Store.restore(this);
         recorded=engine!=null&&engine.finished;
     }
@@ -58,10 +57,10 @@ public class TimerService extends Service {
         return new Notification.Builder(this,CHANNEL).setSmallIcon(com.strengthtimer.app.R.drawable.ic_app).setContentTitle((engine.paused?"已暂停 · ":"")+s.kind+" · "+s.name).setContentText(MainActivity.clock(engine.remaining(now()))+" · 已完成 "+engine.completed+" 组").setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true).addAction(new Notification.Action.Builder(null,label,pause).build()).addAction(new Notification.Action.Builder(null,"跳过",skip).build()).build();
     }
     private void signal(){
-        if(Store.prefs(this).getBoolean("sound",true)&&tone!=null)tone.startTone(ToneGenerator.TONE_PROP_BEEP2,250);
+        if(Store.prefs(this).getBoolean("sound",true))Chime.play(this,engine!=null&&engine.finished?Chime.COMPLETE:engine!=null&&engine.current().exercise()?Chime.TRAINING:Chime.REST);
         if(Store.prefs(this).getBoolean("vibrate",true)){Vibrator v=(Vibrator)getSystemService(VIBRATOR_SERVICE);if(v!=null&&v.hasVibrator())v.vibrate(VibrationEffect.createOneShot(180,VibrationEffect.DEFAULT_AMPLITUDE));}
     }
     private void shutdown(){handler.removeCallbacks(tick);if(lock!=null&&lock.isHeld())lock.release();stopForeground(STOP_FOREGROUND_REMOVE);stopSelf();}
-    @Override public void onDestroy(){handler.removeCallbacks(tick);if(engine!=null&&!engine.finished)Store.session(this,engine,now());if(lock!=null&&lock.isHeld())lock.release();if(tone!=null)tone.release();super.onDestroy();}
+    @Override public void onDestroy(){handler.removeCallbacks(tick);if(engine!=null&&!engine.finished)Store.session(this,engine,now());if(lock!=null&&lock.isHeld())lock.release();super.onDestroy();}
     @Override public IBinder onBind(Intent i){return null;}
 }

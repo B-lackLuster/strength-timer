@@ -6,6 +6,8 @@
 - 训练总览显示动作数、目标组数及包含休息的预计用时。
 - 内置全身、核心和下肢模板；支持命名保存、切换、覆盖确认和删除自定义方案，全部离线存储。模板仅为可编辑的计时清单。
 - 环形倒计时显示当前阶段剩余比例；绿色训练、橙色休息，下方进度条显示整场训练进度。
+- 开始训练按钮固定在训练计划页底部，不随列表滚动；右侧细滚动条与内容分离并自动淡出。
+- 圆角底部设置面板；训练、休息和完成使用不同的柔和钟声，可调音量并分别试听，振动可独立开关。音频由 `tools/generate_chimes.py` 原创生成。
 - 每个动作可配置组数、组间小休息、动作后大休息（0 秒表示关闭）。
 - 长按卡片左侧 ≡ 拖动排序，也可通过编辑 → 更多上下移动、复制、删除。
 - 自定义大/小休息可作为独立项目插入并拖动；自动休息跟随所属动作。
@@ -19,12 +21,12 @@
 
 ## 安装
 GitHub Actions → Build Android APK → 成功运行 → strength-timer-apk，解压安装 APK。
-新版安装包版本为 1.1.0，可覆盖升级 1.0.0 并保留原有训练计划与记录。
+新版安装包版本为 1.2.0，可覆盖升级 1.0.0 / 1.1.0 并保留原有训练计划与记录。
 首次运行建议允许通知，便于锁屏暂停或跳过。部分手机需在系统设置允许应用后台运行。
 
 ## 云端构建
 本机无需 Android SDK、Android Studio 或模拟器。GitHub Actions 使用 JDK 17、Gradle 8.9、Android Gradle Plugin 8.7.3、Android SDK 35。
-推送 main 或手动运行工作流会执行纯 Java 计时测试、Android lint、签名 release 构建，以及 Android 15 模拟器的 5 项界面测试（含方案保存切换、拖动排序和后台计时），输出测试报告和界面截图。
+推送 main 或手动运行工作流会执行纯 Java 计时测试、Android lint、签名 release 构建，以及 Android 15 模拟器的 6 项界面测试（含底栏位置固定、设置持久化、方案保存切换、拖动排序和后台计时），输出测试报告和界面截图。
 
 构建兼容性依据：[Android 官方 AGP 8.7 说明](https://developer.android.com/build/releases/agp-8-7-0-release-notes)。后台服务声明遵循 [Android 官方前台服务类型说明](https://developer.android.com/about/versions/14/changes/fgs-types-required)。
 
