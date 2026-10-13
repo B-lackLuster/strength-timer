@@ -54,6 +54,20 @@ public class AppTest {
         if(view instanceof ViewGroup){ViewGroup group=(ViewGroup)view;for(int n=0;n<group.getChildCount();n++){View found=findText(group.getChildAt(n),value);if(found!=null)return found;}}
         return null;
     }
+    @Test public void saveAndSwitchWorkoutPlans()throws Exception{
+        try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
+            onView(withText("保存方案")).perform(click());
+            onView(isAssignableFrom(android.widget.EditText.class)).perform(typeText("My workout"),closeSoftKeyboard());
+            onView(withText("保存")).perform(click());assertTrue(Store.plans(context).has("My workout"));
+            onView(withText("切换方案")).perform(click());onView(withText("模板 · 下肢训练")).perform(click());
+            onView(withText("使用方案")).perform(click());assertEquals("深蹲",Store.load(context).get(0).name);
+            onView(withText("切换方案")).perform(click());onView(withText("已保存 · My workout")).perform(click());
+            onView(withText("使用方案")).perform(click());assertEquals("平板支撑",Store.load(context).get(0).name);
+            onView(withText("开始训练 →")).perform(scrollTo(),click());SystemClock.sleep(500);
+            onView(withText("训练计划")).perform(click());onView(withText("切换方案")).perform(click());
+            assertNotNull(TimerService.engine);assertEquals("平板支撑",TimerService.engine.current().name);
+        }
+    }
     @Test public void longPressDragReordersPlan(){
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
             onView(withContentDescription("长按拖动 平板支撑")).perform(new ViewAction(){

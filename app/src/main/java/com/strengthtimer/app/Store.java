@@ -20,6 +20,16 @@ final class Store {
         return new ArrayList<>(Arrays.asList(new Workout.Item("平板支撑",45,3,20,60),new Workout.Item("深蹲",60,3,30,60),new Workout.Item("臀桥",45,3,20,0)));
     }
     static void save(Context c,List<Workout.Item> list) { prefs(c).edit().putString("plan",items(list).toString()).apply(); }
+    static JSONObject plans(Context c) {
+        try { return new JSONObject(prefs(c).getString("plans","{}")); }
+        catch(JSONException e) { return new JSONObject(); }
+    }
+    static void savePlan(Context c,String name,List<Workout.Item> list) throws JSONException {
+        JSONObject saved=plans(c);saved.put(name,items(list));prefs(c).edit().putString("plans",saved.toString()).apply();
+    }
+    static void deletePlan(Context c,String name) {
+        JSONObject saved=plans(c);saved.remove(name);prefs(c).edit().putString("plans",saved.toString()).apply();
+    }
     static JSONArray history(Context c) { try{return new JSONArray(prefs(c).getString("history","[]"));}catch(Exception e){return new JSONArray();} }
     static void finish(Context c,Workout.Engine e,boolean complete) {
         try {

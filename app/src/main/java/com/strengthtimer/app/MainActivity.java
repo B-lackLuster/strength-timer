@@ -17,6 +17,7 @@ public class MainActivity extends Activity {
     private LinearLayout root,content,nav;
     private TextView timer,stageTitle,stageMeta,nextText,countsText,pauseButton;
     private ProgressBar progress;
+    private CountdownRing ring;
     private List<Workout.Item> plan;
     private final Handler handler=new Handler(Looper.getMainLooper());
     private String page="plan";
@@ -44,12 +45,13 @@ public class MainActivity extends Activity {
     @Override protected void onResume(){super.onResume();handler.removeCallbacks(refresh);handler.post(refresh);}
     @Override protected void onPause(){super.onPause();handler.removeCallbacks(refresh);}
     private boolean active(){return TimerService.engine!=null&&!TimerService.engine.finished;}
-    private GradientDrawable background(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
+    private GradientDrawable background(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));if(color==CARD)d.setStroke(dp(1),0xff344039);return d;}
     private LinearLayout column(){LinearLayout v=new LinearLayout(this);v.setOrientation(LinearLayout.VERTICAL);return v;}
     private LinearLayout row(){LinearLayout v=new LinearLayout(this);v.setGravity(Gravity.CENTER_VERTICAL);return v;}
     private TextView text(String value,int size,int color){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(color);t.setGravity(Gravity.CENTER_VERTICAL);t.setPadding(0,dp(3),0,dp(3));return t;}
     private TextView bold(String value,int size,int color){TextView t=text(value,size,color);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);return t;}
-    private TextView button(String value,int color,Runnable action){TextView t=bold(value,15,color==ACCENT?BG:TEXT);t.setGravity(Gravity.CENTER);t.setMinHeight(dp(48));t.setPadding(dp(14),dp(10),dp(14),dp(10));t.setBackground(background(color,14));t.setOnClickListener(v->action.run());return t;}
+    private TextView button(String value,int color,Runnable action){TextView t=bold(value,15,color==ACCENT?BG:TEXT);t.setGravity(Gravity.CENTER);t.setMinHeight(dp(48));t.setPadding(dp(14),dp(10),dp(14),dp(10));t.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x33ffffff),background(color,16),background(Color.WHITE,16)));t.setFocusable(true);t.setOnClickListener(v->action.run());return t;}
+    private View metric(String label,String value,int color){LinearLayout box=column();box.setPadding(dp(12),dp(14),dp(12),dp(14));box.setBackground(background(CARD,16));TextView number=bold(value,22,color);number.setAutoSizeTextTypeUniformWithConfiguration(12,22,1,android.util.TypedValue.COMPLEX_UNIT_SP);box.addView(number,new LinearLayout.LayoutParams(-1,dp(30)));box.addView(text(label,12,MUTED));return box;}
     private void gap(LinearLayout v,int h){Space s=new Space(this);v.addView(s,new LinearLayout.LayoutParams(1,dp(h)));}
     private void weighted(LinearLayout r,View v){LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.setMargins(dp(3),0,dp(3),0);r.addView(v,lp);}
     private void base(String selected){
@@ -60,9 +62,13 @@ public class MainActivity extends Activity {
     }
     private void toast(String value){Toast.makeText(this,value,Toast.LENGTH_SHORT).show();}
     private void showPlan(){
-        base("plan");content.addView(bold("今天，练得更稳。",28,TEXT));content.addView(text("长按 ≡ 拖动排序 · 点击卡片编辑",13,MUTED));gap(content,18);
+        base("plan");content.addView(text("WORKOUT / 今日训练",12,ACCENT));content.addView(bold("今天，练得更稳。",28,TEXT));content.addView(text("长按 ≡ 拖动排序 · 点击卡片编辑",13,MUTED));gap(content,18);
         List<Workout.Stage> stages=Workout.compile(plan);long seconds=0;int sets=0;for(Workout.Stage s:stages){seconds+=s.seconds;if(s.exercise())sets++;}
-        LinearLayout stats=row();weighted(stats,bold(plan.size()+" 项目",17,TEXT));weighted(stats,bold(sets+" 组",17,ACCENT));weighted(stats,bold(time((int)seconds),17,TEXT));content.addView(stats);gap(content,16);
+        int exercises=0;for(Workout.Item item:plan)if(!item.rest)exercises++;
+        LinearLayout stats=row();weighted(stats,metric("训练动作",String.valueOf(exercises),TEXT));weighted(stats,metric("目标组数",String.valueOf(sets),ACCENT));weighted(stats,metric("预计用时",time((int)seconds),TEXT));content.addView(stats);gap(content,16);
+        LinearLayout library=row();weighted(library,button("切换方案",CARD,()->choosePlan()));weighted(library,button("保存方案",CARD,()->savePlan()));content.addView(library);gap(content,18);
+        content.addView(bold("训练清单",18,TEXT));gap(content,10);
+        if(plan.isEmpty()){content.addView(text("还没有训练动作。添加动作，或从切换方案中选择一个模板。",15,MUTED));gap(content,16);}
         for(int n=0;n<plan.size();n++){
             final int index=n;Workout.Item item=plan.get(n);
             LinearLayout card=row();card.setPadding(dp(12),dp(12),dp(12),dp(12));card.setBackground(background(CARD,18));
@@ -88,6 +94,33 @@ public class MainActivity extends Activity {
         content.addView(button(active()?"返回正在进行的训练":"开始训练 →",ACCENT,()->{if(active()){showTimer();return;}if(setsCount()==0){toast("至少添加一个训练动作");return;}start();}));gap(content,20);
     }
     private int setsCount(){int n=0;for(Workout.Item i:plan)if(!i.rest)n+=i.sets;return n;}
+    private void savePlan(){
+        if(active()){toast("结束训练后再保存方案");return;}
+        if(setsCount()==0){toast("至少添加一个训练动作");return;}
+        LinearLayout form=column();form.setPadding(dp(24),dp(8),dp(24),dp(8));EditText name=input(form,"方案名称（最多 24 字）","",false);
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("保存当前训练方案").setView(form).setNegativeButton("取消",null).setPositiveButton("保存",null).create();
+        dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+            String title=name.getText().toString().trim();if(title.isEmpty()||title.length()>24){name.setError("请输入 1–24 字的方案名称");return;}
+            Runnable save=()->{try{Store.savePlan(this,title,plan);dialog.dismiss();toast("方案已保存");}catch(JSONException error){toast("保存失败，请重试");}};
+            if(Store.plans(this).has(title))new AlertDialog.Builder(this).setTitle("覆盖同名方案？").setMessage(title).setNegativeButton("取消",null).setPositiveButton("覆盖",(a,w)->save.run()).show();else save.run();
+        }));dialog.show();
+    }
+    private void choosePlan(){
+        if(active()){toast("结束训练后再切换方案");return;}
+        JSONObject saved=Store.plans(this);List<String> names=new ArrayList<>();Iterator<String> keys=saved.keys();while(keys.hasNext())names.add(keys.next());Collections.sort(names);
+        List<String> labels=new ArrayList<>(Arrays.asList("模板 · 全身基础","模板 · 核心训练","模板 · 下肢训练"));for(String name:names)labels.add("已保存 · "+name);
+        new AlertDialog.Builder(this).setTitle("选择训练方案").setItems(labels.toArray(new String[0]),(d,which)->{
+            List<Workout.Item> selected;
+            if(which==0)selected=Arrays.asList(new Workout.Item("平板支撑",45,3,20,60),new Workout.Item("深蹲",60,3,30,60),new Workout.Item("臀桥",45,3,20,0));
+            else if(which==1)selected=Arrays.asList(new Workout.Item("平板支撑",30,3,20,45),new Workout.Item("侧平板支撑",30,3,20,45),new Workout.Item("卷腹",30,3,20,0));
+            else if(which==2)selected=Arrays.asList(new Workout.Item("深蹲",45,3,30,60),new Workout.Item("弓步蹲",45,3,30,60),new Workout.Item("臀桥",45,3,20,0));
+            else try{selected=Store.parse(saved.getJSONArray(names.get(which-3)));}catch(JSONException error){toast("方案读取失败");return;}
+            final List<Workout.Item> replacement=new ArrayList<>(selected);
+            new AlertDialog.Builder(this).setTitle("替换当前训练计划？").setMessage("将使用「"+labels.get(which)+"」。当前清单如需保留，请先保存方案。模板时长和组数可以自由编辑。").setNegativeButton("取消",null).setPositiveButton("使用方案",(a,w)->{plan=replacement;Store.save(this,plan);showPlan();}).show();
+        }).setNegativeButton("取消",null).setNeutralButton(names.isEmpty()?null:"删除已保存方案",(d,w)->{
+            new AlertDialog.Builder(this).setTitle("删除哪个方案？").setItems(names.toArray(new String[0]),(a,index)->new AlertDialog.Builder(this).setTitle("删除「"+names.get(index)+"」？").setMessage("当前训练清单和历史记录会保留。").setNegativeButton("取消",null).setPositiveButton("删除",(b,n)->{Store.deletePlan(this,names.get(index));toast("方案已删除");}).show()).setNegativeButton("取消",null).show();
+        }).show();
+    }
     private EditText input(LinearLayout parent,String label,String value,boolean numeric){parent.addView(text(label,13,MUTED));EditText e=new EditText(this);e.setSingleLine(true);e.setText(value);e.setTextColor(TEXT);e.setTextSize(17);e.setInputType(numeric?android.text.InputType.TYPE_CLASS_NUMBER:android.text.InputType.TYPE_CLASS_TEXT);parent.addView(e,new LinearLayout.LayoutParams(-1,dp(48)));return e;}
     private int number(EditText e,int low,int high){int v=Integer.parseInt(e.getText().toString().trim());if(v<low||v>high)throw new IllegalArgumentException();return v;}
     private void edit(int index,boolean rest,boolean big){
@@ -126,7 +159,8 @@ public class MainActivity extends Activity {
             for(Map.Entry<String,Integer> entry:e.counts.entrySet())content.addView(text(entry.getKey()+"  ·  "+entry.getValue()+" 组",18,TEXT));gap(content,24);content.addView(button("查看训练记录",ACCENT,()->showHistory()));gap(content,12);content.addView(button("回到训练计划",CARD,()->showPlan()));return;
         }
         gap(content,24);stageMeta=bold("",15,ACCENT);stageMeta.setGravity(Gravity.CENTER);content.addView(stageMeta);stageTitle=bold("",27,TEXT);stageTitle.setGravity(Gravity.CENTER);content.addView(stageTitle);gap(content,24);
-        LinearLayout display=column();display.setPadding(dp(12),dp(32),dp(12),dp(32));display.setBackground(background(CARD,28));timer=bold("",76,ACCENT);timer.setGravity(Gravity.CENTER);timer.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);timer.setAutoSizeTextTypeUniformWithConfiguration(36,76,2,android.util.TypedValue.COMPLEX_UNIT_SP);display.addView(timer,new LinearLayout.LayoutParams(-1,dp(110)));countsText=text("",15,MUTED);countsText.setGravity(Gravity.CENTER);display.addView(countsText);content.addView(display);gap(content,22);
+        FrameLayout dial=new FrameLayout(this);ring=new CountdownRing(this);dial.addView(ring,new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout display=column();display.setGravity(Gravity.CENTER);display.setPadding(dp(32),dp(12),dp(32),dp(12));timer=bold("",64,ACCENT);timer.setGravity(Gravity.CENTER);timer.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);timer.setAutoSizeTextTypeUniformWithConfiguration(28,64,2,android.util.TypedValue.COMPLEX_UNIT_SP);display.addView(timer,new LinearLayout.LayoutParams(-1,dp(90)));countsText=text("",14,MUTED);countsText.setGravity(Gravity.CENTER);display.addView(countsText);dial.addView(display,new FrameLayout.LayoutParams(-1,-1));content.addView(dial,new LinearLayout.LayoutParams(-1,dp(280)));gap(content,22);
         progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);progress.setMax(1000);progress.setProgressTintList(android.content.res.ColorStateList.valueOf(ACCENT));content.addView(progress,new LinearLayout.LayoutParams(-1,dp(6)));gap(content,16);nextText=text("",14,MUTED);content.addView(nextText);gap(content,24);
         LinearLayout controls=row();pauseButton=button(e.paused?"继续":"暂停",ACCENT,()->command("PAUSE"));weighted(controls,pauseButton);weighted(controls,button("跳过当前阶段",CARD,()->new AlertDialog.Builder(this).setTitle("跳过当前阶段？").setMessage("跳过的训练组不会计入完成次数。").setPositiveButton("跳过",(d,w)->command("SKIP")).setNegativeButton("取消",null).show()));content.addView(controls);gap(content,12);
         content.addView(button("结束本次训练",CARD,()->new AlertDialog.Builder(this).setTitle("结束训练？").setMessage("已完成的组数会保存到训练记录。").setPositiveButton("结束并保存",(d,w)->{command("STOP");handler.postDelayed(()->showHistory(),300);}).setNegativeButton("继续训练",null).show()));gap(content,18);
@@ -136,12 +170,14 @@ public class MainActivity extends Activity {
         Workout.Engine e=TimerService.engine;if(e==null||e.finished||timer==null)return;Workout.Stage s=e.current();
         stageMeta.setText((e.paused?"已暂停 · ":"")+s.kind+" / "+(e.index+1)+" OF "+e.stages.size());stageMeta.setTextColor(s.exercise()?ACCENT:ORANGE);stageTitle.setText(s.name);timer.setText(clock(e.remaining(TimerService.now())));timer.setTextColor(s.exercise()?ACCENT:ORANGE);countsText.setText(s.exercise()?"第 "+s.set+" / "+s.sets+" 组 · 已完成 "+e.completed+" 组":"放松呼吸 · 已完成 "+e.completed+" 组");pauseButton.setText(e.paused?"继续":"暂停");
         progress.setProgress((int)(1000*e.elapsedMillis(TimerService.now())/Math.max(1,e.totalMillis())));
+        ring.update(e.remaining(TimerService.now()),s.seconds*1000L,s.exercise()?ACCENT:ORANGE);
+        progress.setProgressTintList(android.content.res.ColorStateList.valueOf(s.exercise()?ACCENT:ORANGE));
         nextText.setText(e.index+1<e.stages.size()?"接下来  /  "+e.stages.get(e.index+1).name+" · "+time(e.stages.get(e.index+1).seconds):"接下来  /  训练完成");
     }
     private void showHistory(){
         base("history");content.addView(bold("每一组，都留下痕迹。",26,TEXT));content.addView(text("次数按完成的计时组记录，不是动作重复次数。",12,MUTED));gap(content,20);
         JSONArray records=Store.history(this);int total=0;long duration=0;for(int n=0;n<records.length();n++){JSONObject o=records.optJSONObject(n);total+=o.optInt("count");duration+=o.optLong("seconds");}
-        content.addView(bold(total+" 组  /  "+time((int)duration),24,ACCENT));content.addView(text(records.length()+" 次训练 · 最近 200 条记录",13,MUTED));gap(content,20);
+        LinearLayout stats=row();weighted(stats,metric("累计训练",records.length()+" 次",TEXT));weighted(stats,metric("完成组数",total+" 组",ACCENT));weighted(stats,metric("有效时长",time((int)duration),TEXT));content.addView(stats);gap(content,12);content.addView(text("最近 200 条记录 · 每次坚持都值得记录",13,MUTED));gap(content,20);
         if(records.length()==0)content.addView(text("开始第一场训练，记录就会出现在这里。",16,TEXT));
         SimpleDateFormat date=new SimpleDateFormat("MM月dd日 HH:mm",Locale.CHINA);
         for(int n=0;n<records.length();n++){
@@ -152,6 +188,6 @@ public class MainActivity extends Activity {
         LinearLayout box=column();box.setPadding(dp(24),dp(10),dp(24),dp(16));box.setBackgroundColor(BG);
         Switch sound=new Switch(this);sound.setText("阶段结束提示音");sound.setTextColor(TEXT);sound.setChecked(Store.prefs(this).getBoolean("sound",true));box.addView(sound,new LinearLayout.LayoutParams(-1,dp(56)));sound.setOnCheckedChangeListener((b,on)->Store.prefs(this).edit().putBoolean("sound",on).apply());
         Switch vibration=new Switch(this);vibration.setText("阶段结束振动");vibration.setTextColor(TEXT);vibration.setChecked(Store.prefs(this).getBoolean("vibrate",true));box.addView(vibration,new LinearLayout.LayoutParams(-1,dp(56)));vibration.setOnCheckedChangeListener((b,on)->Store.prefs(this).edit().putBoolean("vibrate",on).apply());
-        box.addView(text("力量计时 1.0\n离线使用 · 数据保存在本机\n提示音音量跟随手机闹钟音量",13,MUTED));new AlertDialog.Builder(this).setTitle("训练设置").setView(box).setPositiveButton("完成",null).show();
+        box.addView(text("力量计时 1.1\n离线使用 · 数据保存在本机\n提示音音量跟随手机闹钟音量",13,MUTED));new AlertDialog.Builder(this).setTitle("训练设置").setView(box).setPositiveButton("完成",null).show();
     }
 }

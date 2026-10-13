@@ -74,7 +74,7 @@ jobs:
             adb shell pm grant com.strengthtimer.app android.permission.POST_NOTIFICATIONS
             adb shell am instrument -w com.strengthtimer.app.test/androidx.test.runner.AndroidJUnitRunner | tee instrument-results.txt
             adb pull /sdcard/Android/data/com.strengthtimer.app/files/screenshots screenshots
-            grep -q 'OK (4 tests)' instrument-results.txt
+            grep -q 'OK (5 tests)' instrument-results.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
