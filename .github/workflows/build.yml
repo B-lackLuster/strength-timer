@@ -91,7 +91,7 @@ jobs:
             app_focus_ready=false
             for attempt in $(seq 1 15); do
               adb shell dumpsys window > preflight-window.txt
-              if grep -q 'mCurrentFocus=.*com.strengthtimer.app/.MainActivity' preflight-window.txt; then
+              if grep -q 'mCurrentFocus=.*com\.strengthtimer\.app/' preflight-window.txt; then
                 app_focus_ready=true
                 break
               fi
