@@ -1,0 +1,726 @@
+{
+  "speaker": "Yue Tan",
+  "copyright": "Copyright (c) 2009 Yue Tan",
+  "license": "CC BY-SA 3.0 US",
+  "license_url": "https://creativecommons.org/licenses/by-sa/3.0/us/",
+  "sources": {
+    "七": {
+      "file": "cmn-09075744.flac",
+      "source": "https://fsi-languages.yojik.eu/audiocollections/detailled/cmn-caen-tan/flac/cmn-09075744.flac",
+      "sha256": "54e52fd5ef6b2deb2d646b857724b49651e715aae484b7c3d4304b9a7df9535e",
+      "trim_seconds": [
+        0.24,
+        0.715
+      ]
+    },
+    "十": {
+      "file": "cmn-44fa9ee9.flac",
+      "source": "https://fsi-languages.yojik.eu/audiocollections/detailled/cmn-caen-tan/flac/cmn-44fa9ee9.flac",
+      "sha256": "61e11416ba31910e065a860ea355d8bf5b5d70142e3a32f95af02338ba21db89",
+      "trim_seconds": [
+        0.26,
+        0.775
+      ]
+    },
+    "八": {
+      "file": "cmn-5798dd37.flac",
+      "source": "https://fsi-languages.yojik.eu/audiocollections/detailled/cmn-caen-tan/flac/cmn-5798dd37.flac",
+      "sha256": "6f714938959575a5502cfb7e587a27eac468b857a43130ae55fe20b2aa0b57fa",
+      "trim_seconds": [
+        0.3,
+        0.775
+      ]
+    },
+    "一": {
+      "file": "cmn-900e06fe.flac",
+      "source": "https://fsi-languages.yojik.eu/audiocollections/detailled/cmn-caen-tan/flac/cmn-900e06fe.flac",
+      "sha256": "4f6105fcaaacc6ec4f16281b8a7d882a40ace592c9d7a16b796b97fe80df96bb",
+      "trim_seconds": [
+        0.24,
+        0.635
+      ]
+    },
+    "四": {
+      "file": "cmn-a500d244.flac",
+      "source": "https://fsi-languages.yojik.eu/audiocollections/detailled/cmn-caen-tan/flac/cmn-a500d244.flac",
+      "sha256": "8d11f748d6817621bd895f75c1a6dc61f766986dbad8a5805ba2647e85142fe7",
+      "trim_seconds": [
+        0.28,
+        0.775
+      ]
+    },
+    "二": {
+      "file": "cmn-ab8e2857.flac",
+      "source": "https://fsi-languages.yojik.eu/audiocollections/detailled/cmn-caen-tan/flac/cmn-ab8e2857.flac",
+      "sha256": "220d7a8721da1f9c34f7441283249733fc035c0ad8fbdeacc144cca00cc07ba9",
+      "trim_seconds": [
+        0.26,
+        0.575
+      ]
+    },
+    "五": {
+      "file": "cmn-b8e2b001.flac",
+      "source": "https://fsi-languages.yojik.eu/audiocollections/detailled/cmn-caen-tan/flac/cmn-b8e2b001.flac",
+      "sha256": "6a61441392df4b72d0883de296241a18d5e16623953c8a82dca09be612fc7f86",
+      "trim_seconds": [
+        0.28,
+        0.895
+      ]
+    },
+    "六": {
+      "file": "cmn-befb7802.flac",
+      "source": "https://fsi-languages.yojik.eu/audiocollections/detailled/cmn-caen-tan/flac/cmn-befb7802.flac",
+      "sha256": "f90c2014fe43aab9461cd50888941e70b4bd23e1b3f11161d549be576bb817f8",
+      "trim_seconds": [
+        0.26,
+        0.695
+      ]
+    },
+    "三": {
+      "file": "cmn-e9d2be5a.flac",
+      "source": "https://fsi-languages.yojik.eu/audiocollections/detailled/cmn-caen-tan/flac/cmn-e9d2be5a.flac",
+      "sha256": "c204c521bf11ee3650614c29fe5e5b2d91fe1eff6231f92249de75eb58e97b48",
+      "trim_seconds": [
+        0.28,
+        0.775
+      ]
+    },
+    "九": {
+      "file": "cmn-ea135b66.flac",
+      "source": "https://fsi-languages.yojik.eu/audiocollections/detailled/cmn-caen-tan/flac/cmn-ea135b66.flac",
+      "sha256": "b0bb83e3ef8d4afc3eb3055ff49464a0793fdda3d6829eae1f84d6bce3ec2404",
+      "trim_seconds": [
+        0.24,
+        0.855
+      ]
+    }
+  },
+  "clips": {
+    "count_01.wav": {
+      "spoken": "一",
+      "sources": [
+        "cmn-900e06fe.flac"
+      ],
+      "tempo": 1,
+      "duration": 0.405,
+      "sha256": "f8f33fbeb1d2d4725cd403f6851a81125ae1e812a6cbbb550882fe16cc891194"
+    },
+    "count_02.wav": {
+      "spoken": "二",
+      "sources": [
+        "cmn-ab8e2857.flac"
+      ],
+      "tempo": 1,
+      "duration": 0.325,
+      "sha256": "d64755b50cb1a305a4aa5e4eac899a1a3482c29928fd45fc1a89bdb92bebf610"
+    },
+    "count_03.wav": {
+      "spoken": "三",
+      "sources": [
+        "cmn-e9d2be5a.flac"
+      ],
+      "tempo": 1,
+      "duration": 0.505,
+      "sha256": "843c20957af5c89e4aebe098b97151a93f5a7172bdff2f2e03a938300cb96544"
+    },
+    "count_04.wav": {
+      "spoken": "四",
+      "sources": [
+        "cmn-a500d244.flac"
+      ],
+      "tempo": 1,
+      "duration": 0.505,
+      "sha256": "2904d764df651fda84ea3dc7cd8f9ccdcdb6b0d25fa7ff4174b87c8d8220cfc1"
+    },
+    "count_05.wav": {
+      "spoken": "五",
+      "sources": [
+        "cmn-b8e2b001.flac"
+      ],
+      "tempo": 1,
+      "duration": 0.625,
+      "sha256": "ddc3baf4bf8dc7ad1f8f6b51ae7ed2f40bdd878d7485f0025813b37b67ca89b1"
+    },
+    "count_06.wav": {
+      "spoken": "六",
+      "sources": [
+        "cmn-befb7802.flac"
+      ],
+      "tempo": 1,
+      "duration": 0.445,
+      "sha256": "9bdc45ca9807a6ec9e920d3985f6df42d4f8eff7d032ec1499e39c6613f263bb"
+    },
+    "count_07.wav": {
+      "spoken": "七",
+      "sources": [
+        "cmn-09075744.flac"
+      ],
+      "tempo": 1,
+      "duration": 0.485,
+      "sha256": "b764b5a366fc64f4827d550e095b28f94d94a0e04943b92dd0cc872a180082f1"
+    },
+    "count_08.wav": {
+      "spoken": "八",
+      "sources": [
+        "cmn-5798dd37.flac"
+      ],
+      "tempo": 1,
+      "duration": 0.485,
+      "sha256": "bb56f4d70963c4cb4b9b24cc5266cd08f6d5364f2fbd1c28247f2e3b7fb206ff"
+    },
+    "count_09.wav": {
+      "spoken": "九",
+      "sources": [
+        "cmn-ea135b66.flac"
+      ],
+      "tempo": 1,
+      "duration": 0.625,
+      "sha256": "92552eefde4501b202ee6aacda07598610b980710e8981687bc8fed231aa597e"
+    },
+    "count_10.wav": {
+      "spoken": "十",
+      "sources": [
+        "cmn-44fa9ee9.flac"
+      ],
+      "tempo": 1,
+      "duration": 0.525,
+      "sha256": "11514441fcd500c0da4b7804380d0d6915c98ad77c9365a7d076b1d23de74c9a"
+    },
+    "count_11.wav": {
+      "spoken": "十一",
+      "sources": [
+        "cmn-44fa9ee9.flac",
+        "cmn-900e06fe.flac"
+      ],
+      "tempo": 1.1923,
+      "duration": 0.787,
+      "sha256": "556f6f8606458c643aa0b8e3d289f0dcf971293f69e7e6023228665f91010081"
+    },
+    "count_12.wav": {
+      "spoken": "十二",
+      "sources": [
+        "cmn-44fa9ee9.flac",
+        "cmn-ab8e2857.flac"
+      ],
+      "tempo": 1.0897,
+      "duration": 0.7887,
+      "sha256": "4ae933eb0081bb4f07d1c9d585fa93ec4dd59f7cd3f619a11157eb5b7baa99e5"
+    },
+    "count_13.wav": {
+      "spoken": "十三",
+      "sources": [
+        "cmn-44fa9ee9.flac",
+        "cmn-e9d2be5a.flac"
+      ],
+      "tempo": 1.3205,
+      "duration": 0.7829,
+      "sha256": "11d4e082224280392191a7af99468891e04ca28d3c053ff87abd2418da91ab3b"
+    },
+    "count_14.wav": {
+      "spoken": "十四",
+      "sources": [
+        "cmn-44fa9ee9.flac",
+        "cmn-a500d244.flac"
+      ],
+      "tempo": 1.3205,
+      "duration": 0.7838,
+      "sha256": "7b11649a3aeaa62c51e20ae647519d7e977882cc1a2d85f9619d95371c0ce906"
+    },
+    "count_15.wav": {
+      "spoken": "十五",
+      "sources": [
+        "cmn-44fa9ee9.flac",
+        "cmn-b8e2b001.flac"
+      ],
+      "tempo": 1.4744,
+      "duration": 0.7897,
+      "sha256": "66044904f30cbca41a1cdb41171877278a57d20c2afe1c824468e1a1165f8405"
+    },
+    "count_16.wav": {
+      "spoken": "十六",
+      "sources": [
+        "cmn-44fa9ee9.flac",
+        "cmn-befb7802.flac"
+      ],
+      "tempo": 1.2436,
+      "duration": 0.784,
+      "sha256": "a4730ee903b57bb9a88a875897757aafd6663840bf503dea78cbdeb85914f482"
+    },
+    "count_17.wav": {
+      "spoken": "十七",
+      "sources": [
+        "cmn-44fa9ee9.flac",
+        "cmn-09075744.flac"
+      ],
+      "tempo": 1.2949,
+      "duration": 0.7811,
+      "sha256": "cc50a946a1fa4edb8099a5fc65692493cbe2825e74709991c272f46434cb1ce2"
+    },
+    "count_18.wav": {
+      "spoken": "十八",
+      "sources": [
+        "cmn-44fa9ee9.flac",
+        "cmn-5798dd37.flac"
+      ],
+      "tempo": 1.2949,
+      "duration": 0.7784,
+      "sha256": "1809d04f403b1f721ca102a96c3c0902b5287e0b3c51bcccb9921c152898c97d"
+    },
+    "count_19.wav": {
+      "spoken": "十九",
+      "sources": [
+        "cmn-44fa9ee9.flac",
+        "cmn-ea135b66.flac"
+      ],
+      "tempo": 1.4744,
+      "duration": 0.7766,
+      "sha256": "477b6306dc05303a2d101440ef08f3dc26abd690e97a21e7cb3cdcd7d4fd071a"
+    },
+    "count_20.wav": {
+      "spoken": "二十",
+      "sources": [
+        "cmn-ab8e2857.flac",
+        "cmn-44fa9ee9.flac"
+      ],
+      "tempo": 1.0897,
+      "duration": 0.7838,
+      "sha256": "c23dc02a78af535909a031fa73f5df2618429ae3b4064cfba2330b2d9653273b"
+    },
+    "count_21.wav": {
+      "spoken": "二十一",
+      "sources": [
+        "cmn-ab8e2857.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-900e06fe.flac"
+      ],
+      "tempo": 1.609,
+      "duration": 0.7805,
+      "sha256": "339f8e4043d1f7646c500106ef951b2323750b2cb94dac6c4ab93fe208a867c2"
+    },
+    "count_22.wav": {
+      "spoken": "二十二",
+      "sources": [
+        "cmn-ab8e2857.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-ab8e2857.flac"
+      ],
+      "tempo": 1.5064,
+      "duration": 0.7762,
+      "sha256": "11d3ef0c6885092964a3f5062a6a91b86aef2c03131a3c78b38c5daa2b3eb39e"
+    },
+    "count_23.wav": {
+      "spoken": "二十三",
+      "sources": [
+        "cmn-ab8e2857.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-e9d2be5a.flac"
+      ],
+      "tempo": 1.7372,
+      "duration": 0.783,
+      "sha256": "cdf760d5f6bc3f8233b5bae804faeab978713c65cd35cabd899870daa40a4624"
+    },
+    "count_24.wav": {
+      "spoken": "二十四",
+      "sources": [
+        "cmn-ab8e2857.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-a500d244.flac"
+      ],
+      "tempo": 1.7372,
+      "duration": 0.768,
+      "sha256": "0058720b9ebf568ebd5d53cdbe2f703ff12494de0a20dff83de4bd0d01e0acf2"
+    },
+    "count_25.wav": {
+      "spoken": "二十五",
+      "sources": [
+        "cmn-ab8e2857.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-b8e2b001.flac"
+      ],
+      "tempo": 1.891,
+      "duration": 0.7819,
+      "sha256": "b5c68d642d23e0f78900014ae78f699c1f17c123062825c14f9a0c8528b36d9f"
+    },
+    "count_26.wav": {
+      "spoken": "二十六",
+      "sources": [
+        "cmn-ab8e2857.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-befb7802.flac"
+      ],
+      "tempo": 1.6603,
+      "duration": 0.7789,
+      "sha256": "880f752ab03f1732ceb9dedd7b108d830e35d4f2eedf63b92fa59b5ac4d43312"
+    },
+    "count_27.wav": {
+      "spoken": "二十七",
+      "sources": [
+        "cmn-ab8e2857.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-09075744.flac"
+      ],
+      "tempo": 1.7115,
+      "duration": 0.7839,
+      "sha256": "844fb4a396cbfbfaed783c15c75746888426496690e24870bf09c7a0b0bbd578"
+    },
+    "count_28.wav": {
+      "spoken": "二十八",
+      "sources": [
+        "cmn-ab8e2857.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-5798dd37.flac"
+      ],
+      "tempo": 1.7115,
+      "duration": 0.7808,
+      "sha256": "115e1150ad578d3a76d73a2afa8097116fa26f5135c25408ab121e409b46b766"
+    },
+    "count_29.wav": {
+      "spoken": "二十九",
+      "sources": [
+        "cmn-ab8e2857.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-ea135b66.flac"
+      ],
+      "tempo": 1.891,
+      "duration": 0.768,
+      "sha256": "5a7d6be31bcb7aca1a8ded281f0fcd9fda8cf266f46db56d3c5f84002b3c28a7"
+    },
+    "count_30.wav": {
+      "spoken": "三十",
+      "sources": [
+        "cmn-e9d2be5a.flac",
+        "cmn-44fa9ee9.flac"
+      ],
+      "tempo": 1.3205,
+      "duration": 0.7889,
+      "sha256": "d03fa1dc215489bb252724c902f817193f85c0e94a1c57d426030c7626df1619"
+    },
+    "count_31.wav": {
+      "spoken": "三十一",
+      "sources": [
+        "cmn-e9d2be5a.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-900e06fe.flac"
+      ],
+      "tempo": 1.8397,
+      "duration": 0.7848,
+      "sha256": "58e1284283a1aaf1c62e57aabb9a10d32de34271f395bd8a6a8db3ea8e6ff7d2"
+    },
+    "count_32.wav": {
+      "spoken": "三十二",
+      "sources": [
+        "cmn-e9d2be5a.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-ab8e2857.flac"
+      ],
+      "tempo": 1.7372,
+      "duration": 0.783,
+      "sha256": "b24e1cd17b75da23a751621287310c6bad17214cd7653b26b70259feb43ba94f"
+    },
+    "count_33.wav": {
+      "spoken": "三十三",
+      "sources": [
+        "cmn-e9d2be5a.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-e9d2be5a.flac"
+      ],
+      "tempo": 1.9679,
+      "duration": 0.768,
+      "sha256": "ff9b1e0dcbf09fb0652fa2e1f91acd3d765f945cb22e7aa48773d367ce0adbe6"
+    },
+    "count_34.wav": {
+      "spoken": "三十四",
+      "sources": [
+        "cmn-e9d2be5a.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-a500d244.flac"
+      ],
+      "tempo": 1.9679,
+      "duration": 0.7778,
+      "sha256": "546566ddfbd2fefeb459f9322321a6fb57c4a0dd87cf512bf6ed06e8b75ef5e2"
+    },
+    "count_35.wav": {
+      "spoken": "三十五",
+      "sources": [
+        "cmn-e9d2be5a.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-b8e2b001.flac"
+      ],
+      "tempo": 2.1218,
+      "duration": 0.7866,
+      "sha256": "25bca52e94e06c4965ca27d7874d4e5132b4f9caad62067e6c0164f3784c667b"
+    },
+    "count_36.wav": {
+      "spoken": "三十六",
+      "sources": [
+        "cmn-e9d2be5a.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-befb7802.flac"
+      ],
+      "tempo": 1.891,
+      "duration": 0.7792,
+      "sha256": "fa52bf8cf9a8c32963fdf4edddc437e33e33f6a0dacb8cebd1463d757adc6f15"
+    },
+    "count_37.wav": {
+      "spoken": "三十七",
+      "sources": [
+        "cmn-e9d2be5a.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-09075744.flac"
+      ],
+      "tempo": 1.9423,
+      "duration": 0.7877,
+      "sha256": "1c8f2c065d944c4dd54f15aa0cbbe2fdfb13760f706db59517da392e1a296c06"
+    },
+    "count_38.wav": {
+      "spoken": "三十八",
+      "sources": [
+        "cmn-e9d2be5a.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-5798dd37.flac"
+      ],
+      "tempo": 1.9423,
+      "duration": 0.768,
+      "sha256": "f463f6c3ab410015b477097ff1ec03a081a0ab6922afd5acd5fc3a3a51404248"
+    },
+    "count_39.wav": {
+      "spoken": "三十九",
+      "sources": [
+        "cmn-e9d2be5a.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-ea135b66.flac"
+      ],
+      "tempo": 2.1218,
+      "duration": 0.779,
+      "sha256": "149299318cd4639936835df31e4a05826887b64118959caee4ad56a294ceef5a"
+    },
+    "count_40.wav": {
+      "spoken": "四十",
+      "sources": [
+        "cmn-a500d244.flac",
+        "cmn-44fa9ee9.flac"
+      ],
+      "tempo": 1.3205,
+      "duration": 0.7906,
+      "sha256": "6f02f5aa233d0cbc7294ebd272e6588147c448978206447506a17cd66a2fb69f"
+    },
+    "count_41.wav": {
+      "spoken": "四十一",
+      "sources": [
+        "cmn-a500d244.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-900e06fe.flac"
+      ],
+      "tempo": 1.8397,
+      "duration": 0.7833,
+      "sha256": "43d4121e847dacc9735cacb29ac2fc5df57041e7e7fe50118fcbcdea806bc738"
+    },
+    "count_42.wav": {
+      "spoken": "四十二",
+      "sources": [
+        "cmn-a500d244.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-ab8e2857.flac"
+      ],
+      "tempo": 1.7372,
+      "duration": 0.783,
+      "sha256": "05b102d02b05cb2e77369ab92b9cfd9b0b747f4b01bfa2bc45f0d2c7a35aabb8"
+    },
+    "count_43.wav": {
+      "spoken": "四十三",
+      "sources": [
+        "cmn-a500d244.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-e9d2be5a.flac"
+      ],
+      "tempo": 1.9679,
+      "duration": 0.768,
+      "sha256": "651a6bcf0e2d655792b1593b87b812bb9b863b22a723768c8a64be540f5b8961"
+    },
+    "count_44.wav": {
+      "spoken": "四十四",
+      "sources": [
+        "cmn-a500d244.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-a500d244.flac"
+      ],
+      "tempo": 1.9679,
+      "duration": 0.7741,
+      "sha256": "ebcafb51345b772012f5ef3241dfa532aec129390a4e26a9bd1fae4e5a1ea70c"
+    },
+    "count_45.wav": {
+      "spoken": "四十五",
+      "sources": [
+        "cmn-a500d244.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-b8e2b001.flac"
+      ],
+      "tempo": 2.1218,
+      "duration": 0.7673,
+      "sha256": "c621eecb3ea547a90c6a6513b544569826506847d8408d97e509fd47e9ad8872"
+    },
+    "count_46.wav": {
+      "spoken": "四十六",
+      "sources": [
+        "cmn-a500d244.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-befb7802.flac"
+      ],
+      "tempo": 1.891,
+      "duration": 0.783,
+      "sha256": "a20d31cf4927d0613b19a706404b169cdec9c266d8609dcb55a40b204e96ca18"
+    },
+    "count_47.wav": {
+      "spoken": "四十七",
+      "sources": [
+        "cmn-a500d244.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-09075744.flac"
+      ],
+      "tempo": 1.9423,
+      "duration": 0.768,
+      "sha256": "355980cb81fc10212882b2004ca48792395e4c1409f5c38cf4bbbc4bec4e6d50"
+    },
+    "count_48.wav": {
+      "spoken": "四十八",
+      "sources": [
+        "cmn-a500d244.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-5798dd37.flac"
+      ],
+      "tempo": 1.9423,
+      "duration": 0.768,
+      "sha256": "31bc50fee7647611dc17cfa0ddebbe3671f41d81afc14c635cced42a5f0acbe6"
+    },
+    "count_49.wav": {
+      "spoken": "四十九",
+      "sources": [
+        "cmn-a500d244.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-ea135b66.flac"
+      ],
+      "tempo": 2.1218,
+      "duration": 0.7854,
+      "sha256": "0c0a20eb2eec5d5a23b8d1ee530515c154192a4e70b1226e13692c3b949e38b9"
+    },
+    "count_50.wav": {
+      "spoken": "五十",
+      "sources": [
+        "cmn-b8e2b001.flac",
+        "cmn-44fa9ee9.flac"
+      ],
+      "tempo": 1.4744,
+      "duration": 0.7738,
+      "sha256": "d80b6d1e3ebd5c2e8cbd5f47dc72ce273a651113ace942104b290b58de0c336b"
+    },
+    "count_51.wav": {
+      "spoken": "五十一",
+      "sources": [
+        "cmn-b8e2b001.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-900e06fe.flac"
+      ],
+      "tempo": 1.9936,
+      "duration": 0.7833,
+      "sha256": "5666de1ebaaa6a94a94b9439b056cf10721cb6390a48942ca563689523b08d93"
+    },
+    "count_52.wav": {
+      "spoken": "五十二",
+      "sources": [
+        "cmn-b8e2b001.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-ab8e2857.flac"
+      ],
+      "tempo": 1.891,
+      "duration": 0.78,
+      "sha256": "c3b0f31bbf091de5d83d59c73ddbb0f85a4e8478ce040c85fa7b1c64e129fcf6"
+    },
+    "count_53.wav": {
+      "spoken": "五十三",
+      "sources": [
+        "cmn-b8e2b001.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-e9d2be5a.flac"
+      ],
+      "tempo": 2.1218,
+      "duration": 0.7788,
+      "sha256": "7a2be59f5b34756ddbe85519694535956e6120b9ae8221d0912f6992dd9f0da0"
+    },
+    "count_54.wav": {
+      "spoken": "五十四",
+      "sources": [
+        "cmn-b8e2b001.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-a500d244.flac"
+      ],
+      "tempo": 2.1218,
+      "duration": 0.7879,
+      "sha256": "b425d75011ebaea2479be0b829eacc629109b8488180ed41e8bf108449eb8c33"
+    },
+    "count_55.wav": {
+      "spoken": "五十五",
+      "sources": [
+        "cmn-b8e2b001.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-b8e2b001.flac"
+      ],
+      "tempo": 2.2756,
+      "duration": 0.7723,
+      "sha256": "f9128051231dcfe000647099eb6e21abc32729f73f30e9b81309545d6ec92095"
+    },
+    "count_56.wav": {
+      "spoken": "五十六",
+      "sources": [
+        "cmn-b8e2b001.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-befb7802.flac"
+      ],
+      "tempo": 2.0449,
+      "duration": 0.7905,
+      "sha256": "0149a938b7caff6cd2cef9a32008ab753a5a8e888d4231b573ef76bec083c2fc"
+    },
+    "count_57.wav": {
+      "spoken": "五十七",
+      "sources": [
+        "cmn-b8e2b001.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-09075744.flac"
+      ],
+      "tempo": 2.0962,
+      "duration": 0.7862,
+      "sha256": "ef15ef0d590fb7fb17e63a4c1e12dc8c01f7d3c15bedba83816f9f9017c2fcff"
+    },
+    "count_58.wav": {
+      "spoken": "五十八",
+      "sources": [
+        "cmn-b8e2b001.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-5798dd37.flac"
+      ],
+      "tempo": 2.0962,
+      "duration": 0.7883,
+      "sha256": "b014cbfdc7f26b1ff7c453dba479156f039a053d7ba43a7107dc230d042f6876"
+    },
+    "count_59.wav": {
+      "spoken": "五十九",
+      "sources": [
+        "cmn-b8e2b001.flac",
+        "cmn-44fa9ee9.flac",
+        "cmn-ea135b66.flac"
+      ],
+      "tempo": 2.2756,
+      "duration": 0.7708,
+      "sha256": "62912dbd101e0862842ed6c966a5349b3bcfb516cf922f5277afdf0663d9cac5"
+    },
+    "count_60.wav": {
+      "spoken": "六十",
+      "sources": [
+        "cmn-befb7802.flac",
+        "cmn-44fa9ee9.flac"
+      ],
+      "tempo": 1.2436,
+      "duration": 0.7802,
+      "sha256": "cf915c61e7ac55a08ee949d4e26439ba2059ac18487f41079318213832cbbde3"
+    }
+  }
+}

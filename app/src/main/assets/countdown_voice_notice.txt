@@ -1,0 +1,12 @@
+Countdown speech: Yue Tan / Shtooka / University of Caen, cmn-caen-tan.
+Copyright (c) 2009 Yue Tan.
+License: Creative Commons Attribution Share Alike 3.0 United States.
+https://creativecommons.org/licenses/by-sa/3.0/us/
+Source notice: https://fsi-languages.yojik.eu/audiocollections/detailled/cmn-caen-tan/readme.txt
+
+The count_01.wav through count_60.wav assets are adapted human recordings.
+Changes: silence/mouth-noise trimming, peak normalization, endpoint fading,
+24 kHz mono PCM16 conversion, digit concatenation for 11-60, and
+pitch-preserving tempo adjustment for longer numbers.
+Derived recordings are distributed under the same CC BY-SA 3.0 US license.
+Attribution and source details are available in Settings in the app.

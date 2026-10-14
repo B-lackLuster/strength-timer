@@ -20,7 +20,7 @@ final class Chime {
             pool=new SoundPool.Builder().setMaxStreams(1).setAudioAttributes(new AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()).build();
             pool.setOnLoadCompleteListener((p,id,status)->{synchronized(Chime.class){if(status==0){loaded.add(id);if(pending==id){playLoaded(id,pendingVolume);pending=0;}}}});
-            Context app=context.getApplicationContext();sounds[TRAINING]=pool.load(app,R.raw.chime_training,1);sounds[REST]=pool.load(app,R.raw.chime_rest,1);sounds[COMPLETE]=pool.load(app,R.raw.chime_complete,1);
+            Context app=context.getApplicationContext();sounds[TRAINING]=pool.load(app,R.raw.cue_start,1);sounds[REST]=pool.load(app,R.raw.cue_pause_end,1);sounds[COMPLETE]=sounds[REST];
         }catch(RuntimeException error){if(pool!=null)pool.release();pool=null;}
     }
     static synchronized void play(Context context,int kind){
