@@ -20,6 +20,9 @@ adb shell pm grant com.strengthtimer.app android.permission.POST_NOTIFICATIONS
 # Restart only these emulator components before testing the application.
 adb root
 adb wait-for-device
+# Keep the same 411dp layout while reducing software-rendering cost on CI.
+adb shell wm size 720x1600
+adb shell wm density 280
 adb shell settings put system screen_off_timeout 2147483647
 sleep 20
 adb shell pkill -f '^com\.android\.systemui$' || true

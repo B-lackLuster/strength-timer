@@ -21,14 +21,14 @@ final class PageTransition {
             float scale=Math.min(1,1080f/current.getWidth());
             snapshot=Bitmap.createBitmap(Math.max(1,Math.round(current.getWidth()*scale)),Math.max(1,Math.round(current.getHeight()*scale)),Bitmap.Config.ARGB_8888);
             Canvas canvas=new Canvas(snapshot);canvas.scale(scale,scale);current.draw(canvas);
-            outgoing=new ImageView(host.getContext());outgoing.setScaleType(ImageView.ScaleType.FIT_XY);outgoing.setImageBitmap(snapshot);outgoing.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            outgoing=new ImageView(host.getContext());outgoing.setScaleType(ImageView.ScaleType.FIT_XY);outgoing.setImageBitmap(snapshot);outgoing.setClickable(true);outgoing.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         }
         host.removeAllViews();current=next;
-        if(outgoing!=null)host.addView(outgoing,new FrameLayout.LayoutParams(-1,-1));
         host.addView(next,new FrameLayout.LayoutParams(-1,-1));
+        if(outgoing!=null)host.addView(outgoing,back?1:0,new FrameLayout.LayoutParams(-1,-1));
         if(outgoing==null)return;
-        float width=host.getWidth();next.setTranslationX(back?-width*.28f:width);next.setAlpha(back?.65f:1f);
-        outgoing.animate().translationX(back?width:-width*.28f).alpha(back?1f:.65f).setDuration(260).setInterpolator(new DecelerateInterpolator(1.4f)).start();
+        float width=host.getWidth();next.setTranslationX(back?-width*.28f:width);next.setAlpha(1f);
+        outgoing.animate().translationX(back?width:-width*.28f).setDuration(260).setInterpolator(new DecelerateInterpolator(1.4f)).start();
         next.animate().translationX(0).alpha(1).setDuration(260).setInterpolator(new DecelerateInterpolator(1.4f)).withEndAction(this::releaseSnapshot).start();
     }
     private void releaseSnapshot(){

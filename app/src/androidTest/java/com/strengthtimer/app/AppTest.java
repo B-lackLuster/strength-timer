@@ -60,8 +60,10 @@ public class AppTest {
     @Test public void saveAndSwitchWorkoutPlans()throws Exception{
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
             onView(withText("保存方案")).perform(click());
-            onView(isAssignableFrom(android.widget.EditText.class)).perform(typeText("My workout"),androidx.test.espresso.action.ViewActions.closeSoftKeyboard());
-            onView(withText("保存")).perform(click());assertTrue(Store.plans(context).has("My workout"));
+            onView(withContentDescription("方案名称（最多 24 字）")).perform(scrollTo(),click());SystemClock.sleep(500);
+            onView(withContentDescription("方案名称（最多 24 字）")).perform(typeText("My workout"),androidx.test.espresso.action.ViewActions.closeSoftKeyboard());shot("19-save-plan-name");
+            onView(withContentDescription("方案名称（最多 24 字）")).check(matches(withText("My workout")));
+            onView(withText("保存")).perform(click());assertTrue("Saved plans: "+Store.plans(context),Store.plans(context).has("My workout"));
             onView(withText("切换方案")).perform(click());onView(withText("模板 · 下肢训练")).perform(click());
             onView(withText("使用方案")).perform(click());assertEquals("深蹲",Store.load(context).get(0).name);
             onView(withText("切换方案")).perform(click());onView(withText("已保存 · My workout")).perform(click());
