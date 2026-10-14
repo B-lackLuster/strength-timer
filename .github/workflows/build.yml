@@ -67,18 +67,18 @@ jobs:
           api-level: 35
           arch: x86_64
           profile: pixel_6
-          disable-animations: true
-          script: |
-            adb install apks/debug/app-debug.apk
-            adb install apks/androidTest/debug/app-debug-androidTest.apk
-            adb shell pm grant com.strengthtimer.app android.permission.POST_NOTIFICATIONS
-            adb shell am instrument -w com.strengthtimer.app.test/androidx.test.runner.AndroidJUnitRunner | tee instrument-results.txt
-            adb pull /sdcard/Android/data/com.strengthtimer.app/files/screenshots screenshots
-            grep -q 'OK (4 tests)' instrument-results.txt
+          cores: 4
+          ram-size: 4096M
+          disable-animations: false
+          script: bash .github/scripts/device-test.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: device-test-results
           path: |
             instrument-results.txt
+            device-logcat.txt
+            device-window.txt
+            preflight-window.txt
+            test-screen.png
             screenshots
