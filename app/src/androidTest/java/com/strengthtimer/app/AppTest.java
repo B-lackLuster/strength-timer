@@ -27,7 +27,9 @@ import org.junit.runner.RunWith;
 public class AppTest {
     Context context;
     @Before public void reset(){context=InstrumentationRegistry.getInstrumentation().getTargetContext();InstrumentationRegistry.getInstrumentation().runOnMainSync(()->{context.stopService(new Intent(context,TimerService.class));TimerService.engine=null;Store.prefs(context).edit().clear().commit();});SystemClock.sleep(200);}
-    void shot(String name)throws Exception {InstrumentationRegistry.getInstrumentation().waitForIdleSync();SystemClock.sleep(600);Bitmap b=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();File dir=new File(context.getExternalFilesDir(null),"screenshots");dir.mkdirs();try(FileOutputStream out=new FileOutputStream(new File(dir,name+".png"))){b.compress(Bitmap.CompressFormat.PNG,100,out);}b.recycle();}
+    void shot(String name)throws Exception {InstrumentationRegistry.getInstrumentation().waitForIdleSync();SystemClock.sleep(600);capture(name);}
+    void capture(String name)throws Exception {Bitmap b=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();File dir=new File(context.getExternalFilesDir(null),"screenshots");dir.mkdirs();try(FileOutputStream out=new FileOutputStream(new File(dir,name+".png"))){b.compress(Bitmap.CompressFormat.PNG,100,out);}b.recycle();}
+    View pageView(MainActivity activity){try{java.lang.reflect.Field field=MainActivity.class.getDeclaredField("pageRoot");field.setAccessible(true);return (View)field.get(activity);}catch(ReflectiveOperationException error){throw new AssertionError(error);}}
     @Test public void editPlanAndInsertRest()throws Exception{
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
             onView(withText("平板支撑")).check(matches(isDisplayed()));shot("01-plan");onView(withText("平板支撑")).perform(click());shot("08-edit-exercise");onView(withText("1分")).perform(scrollTo(),click());onView(withText("保存")).perform(click());assertEquals(60,Store.load(context).get(0).seconds);
@@ -181,9 +183,12 @@ public class AppTest {
     @Test public void unifiedSubpagesRestoreTheirOriginAndActiveTimer()throws Exception{
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
             onView(withText("开始训练 →")).perform(click());SystemClock.sleep(500);Workout.Engine running=TimerService.engine;
+            a.onActivity(activity->{assertTrue(android.animation.ValueAnimator.areAnimatorsEnabled());findText(activity.getWindow().getDecorView(),"训练记录").performClick();assertTrue(pageView(activity).getTranslationX()>0);});SystemClock.sleep(90);capture("15-history-enter-animation");SystemClock.sleep(350);
+            a.onActivity(activity->{activity.onBackPressed();assertTrue(pageView(activity).getTranslationX()<0);});SystemClock.sleep(90);capture("16-history-back-animation");SystemClock.sleep(350);
             onView(withText("训练记录")).perform(click());onView(withText("设置")).perform(click());onView(withText("训练设置")).check(matches(isDisplayed()));onView(withContentDescription("下拉关闭")).check(doesNotExist());shot("14-settings-page");
             a.recreate();onView(withContentDescription("返回训练记录")).perform(click());onView(withText("每一组，都留下痕迹。")).check(matches(isDisplayed()));androidx.test.espresso.Espresso.pressBack();onView(withText("暂停")).check(matches(isDisplayed()));assertSame(running,TimerService.engine);
-            onView(withText("设置")).perform(click());androidx.test.espresso.Espresso.pressBack();onView(withText("暂停")).check(matches(isDisplayed()));assertSame(running,TimerService.engine);
+            a.onActivity(activity->{findText(activity.getWindow().getDecorView(),"设置").performClick();assertTrue(pageView(activity).getTranslationX()>0);});SystemClock.sleep(90);capture("17-settings-enter-animation");SystemClock.sleep(350);
+            a.onActivity(activity->{activity.onBackPressed();assertTrue(pageView(activity).getTranslationX()<0);});SystemClock.sleep(90);capture("18-settings-back-animation");SystemClock.sleep(350);onView(withText("暂停")).check(matches(isDisplayed()));assertSame(running,TimerService.engine);
         }
     }
     @Test public void historyExportsPreserveFieldsAndDeletionSnapshot()throws Exception{
