@@ -28,11 +28,11 @@ public class TimerService extends Service {
         // Even late control intents must satisfy Android's foreground-start contract.
         startForeground(1,notification());
         if("START".equals(action)){
-            if(engine==null||engine.finished){engine=new Workout.Engine(Workout.compile(Store.load(this)),now());recorded=false;}
+            if(engine==null||engine.finished){engine=new Workout.Engine(Workout.compileSession(Store.load(this)),now());recorded=false;}
             if(!engine.finished)signal();
         }else if(engine!=null&&!engine.finished){
             if("PAUSE".equals(action)){if(engine.paused){engine.resume(now());signal(Chime.TRAINING);}else{engine.pause(now());spoken.update(engine,now(),false,0);signal(Chime.REST);}}
-            if("SKIP".equals(action)){CountdownVoice.stop();engine.skip(now());}
+            if("SKIP".equals(action)){CountdownVoice.stop();engine.skip(now());if(!engine.finished)signal();}
             if("COMPLETE".equals(action)&&engine.sessionId.equals(intent.getStringExtra("session_id"))&&engine.completeManual(now(),intent.getIntExtra("stage_index",-1))&&!engine.finished)signal();
             if("STOP".equals(action)){engine.tick(now());Store.finish(this,engine,engine.finished);recorded=true;signal(Chime.COMPLETE);engine=null;shutdown();return START_NOT_STICKY;}
         }
@@ -64,7 +64,7 @@ public class TimerService extends Service {
         return builder.addAction(new Notification.Action.Builder(null,label,pause).build()).addAction(new Notification.Action.Builder(null,"跳过",skip).build()).build();
     }
     private void signal(){
-        signal(engine!=null&&engine.finished?Chime.COMPLETE:engine!=null&&engine.current().exercise()?Chime.TRAINING:Chime.REST);
+        signal(engine!=null&&engine.finished?Chime.COMPLETE:engine!=null&&(engine.current().exercise()||engine.current().preparation())?Chime.TRAINING:Chime.REST);
     }
     private void signal(int kind){
         CountdownVoice.stop();
@@ -72,9 +72,10 @@ public class TimerService extends Service {
         if(Store.prefs(this).getBoolean("vibrate",true)){Vibrator v=(Vibrator)getSystemService(VIBRATOR_SERVICE);if(v!=null&&v.hasVibrator())v.vibrate(VibrationEffect.createOneShot(180,VibrationEffect.DEFAULT_AMPLITUDE));}
     }
     private void readCountdown(){
-        boolean training=engine!=null&&!engine.finished&&engine.current().exercise();
+        boolean preparation=engine!=null&&!engine.finished&&engine.current().preparation();
+        boolean training=engine!=null&&!engine.finished&&(engine.current().exercise()||preparation);
         String key=training?"voice_training":"voice_rest";
-        boolean enabled=Store.prefs(this).getBoolean(key,false)&&engine!=null&&!engine.finished&&!engine.current().manual;int threshold=Store.prefs(this).getInt(key+"_seconds",10);long instant=now();
+        boolean enabled=Store.prefs(this).getBoolean(key,false)&&engine!=null&&!engine.finished&&!engine.current().manual;int threshold=preparation?Workout.PREPARATION_SECONDS:Store.prefs(this).getInt(key+"_seconds",10);long instant=now();
         int second=spoken.update(engine,instant,enabled,threshold);
         if(engine==null||engine.finished||engine.paused||!enabled||engine.remaining(instant)>Math.min(60,threshold)*1000L)CountdownVoice.stop();
         else if(second>0)CountdownVoice.play(this,second,instant+engine.remaining(instant)-(second-1)*1000L);
