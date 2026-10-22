@@ -54,7 +54,7 @@ public class MainActivity extends Activity {
         if(TimerService.engine==null)TimerService.engine=Store.restore(this);
         if(b!=null){ArrayList<String> stack=b.getStringArrayList("backStack");if(stack!=null)backStack.addAll(stack);Bundle positions=b.getBundle("scrollPositions");if(positions!=null)for(String key:positions.keySet())scrollPositions.put(key,positions.getInt(key));pendingExport=b.getString("pendingExport");}
         String restored=b==null?"":b.getString("page","");
-        if(restored.equals("history")||restored.equals("settings")||restored.equals("plan"))renderPage(restored);else if(TimerService.engine!=null&&!TimerService.engine.finished)showTimer();else showPlan();
+        if(restored.equals("history")||restored.equals("settings")||restored.equals("plan"))renderPage(restored);else if(TimerService.engine!=null&&(restored.equals("timer")||!TimerService.engine.finished))showTimer();else showPlan();
     }
     @Override protected void onResume(){super.onResume();handler.removeCallbacks(refresh);handler.post(refresh);}
     @Override protected void onPause(){super.onPause();handler.removeCallbacks(refresh);}
@@ -101,7 +101,7 @@ public class MainActivity extends Activity {
     }
     private void showPlan(){
         base("plan");content.addView(text("WORKOUT / 今日训练",12,ACCENT));content.addView(bold("今天，练得更稳。",28,TEXT));content.addView(text("长按 ≡ 拖动排序 · 点击卡片编辑",13,MUTED));gap(content,18);
-        List<Workout.Stage> stages=Workout.compile(plan);long seconds=0;int sets=0;for(Workout.Stage s:stages){seconds+=s.seconds;if(s.exercise())sets++;}
+        List<Workout.Stage> stages=Workout.compileSession(plan);long seconds=0;int sets=0;for(Workout.Stage s:stages){seconds+=s.seconds;if(s.exercise())sets++;}
         int exercises=0,manuals=0;for(Workout.Item item:plan)if(!item.rest){exercises++;if(item.manual)manuals++;}
         LinearLayout stats=row();weighted(stats,metric("训练动作",String.valueOf(exercises),TEXT));weighted(stats,metric("目标组数",String.valueOf(sets),ACCENT));weighted(stats,metric(manuals>0?"固定用时":"预计用时",time((int)seconds),TEXT));content.addView(stats);if(manuals>0)content.addView(text("另含 "+manuals+" 个次数动作，完成时间由你决定。",12,MUTED));gap(content,16);
         LinearLayout library=row();weighted(library,button("切换方案",CARD,()->choosePlan()));weighted(library,button("保存方案",CARD,()->savePlan()));content.addView(library);gap(content,18);
@@ -128,7 +128,7 @@ public class MainActivity extends Activity {
             content.addView(card,new LinearLayout.LayoutParams(-1,-2));gap(content,10);
         }
         LinearLayout add=row();weighted(add,button("＋ 动作",CARD,()->{if(active())toast("结束训练后再修改计划");else edit(-1,false,false);}));weighted(add,button("＋ 休息",CARD,()->{if(active())toast("结束训练后再修改计划");else edit(-1,true,false);}));content.addView(add);gap(content,16);
-        content.addView(text("小休息出现在组与组之间；最后一组后进入大休息。休息可设为 0 秒跳过，也可插入独立休息块自由排序。",12,MUTED));gap(content,20);
+        content.addView(text("开始后先准备 5 秒，再进入第一项任务。小休息出现在组与组之间；最后一组后进入大休息。休息可设为 0 秒跳过，也可插入独立休息块自由排序。",12,MUTED));gap(content,20);
         LinearLayout dock=column();dock.setPadding(0,dp(12),0,dp(2));dock.setBackgroundColor(BG);
         dock.addView(button(active()?"返回正在进行的训练":"开始训练 →",ACCENT,()->{if(active()){showTimer();return;}if(setsCount()==0){toast("至少添加一个训练动作");return;}start();}));
         pageRoot.addView(dock,new LinearLayout.LayoutParams(-1,-2));
@@ -241,7 +241,7 @@ public class MainActivity extends Activity {
     }
     private void start(){
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},7);
-        TimerService.engine=new Workout.Engine(Workout.compile(plan),TimerService.now());wasFinished=false;startForegroundService(new Intent(this,TimerService.class).setAction("START"));openPage("timer");
+        TimerService.engine=new Workout.Engine(Workout.compileSession(plan),TimerService.now());wasFinished=false;startForegroundService(new Intent(this,TimerService.class).setAction("START"));openPage("timer");
     }
     private void command(String action){startForegroundService(new Intent(this,TimerService.class).setAction(action));}
     private String stageDetail(Workout.Stage stage){return stage.manual?stage.repetitions+" 次 · 手动完成":time(stage.seconds);}
@@ -263,11 +263,12 @@ public class MainActivity extends Activity {
     }
     private void updateTimer(){
         Workout.Engine e=TimerService.engine;if(e==null||e.finished||timer==null)return;Workout.Stage s=e.current();
-        stageMeta.setText((e.paused?"已暂停 · ":"")+(s.manual?"次数训练":s.kind)+" / "+(e.index+1)+" OF "+e.stages.size());stageMeta.setTextColor(s.exercise()?ACCENT:ORANGE);stageTitle.setText(s.name);timer.setText(s.manual?s.repetitions+" 次":clock(e.remaining(TimerService.now())));timer.setTextColor(s.exercise()?ACCENT:ORANGE);countsText.setText(s.exercise()?(s.manual?"手动完成 · ":"")+"第 "+s.set+" / "+s.sets+" 组 · 已完成 "+e.completed+" 组":"放松呼吸 · 已完成 "+e.completed+" 组");pauseButton.setText(e.paused?"继续":"暂停");
+        int stageColor=s.exercise()||s.preparation()?ACCENT:ORANGE;
+        stageMeta.setText((e.paused?"已暂停 · ":"")+(s.preparation()?"准备 · 第一项任务即将开始":(s.manual?"次数训练":s.kind)+" / "+(e.index+1)+" OF "+e.stages.size()));stageMeta.setTextColor(stageColor);stageTitle.setText(s.name);timer.setText(s.manual?s.repetitions+" 次":clock(e.remaining(TimerService.now())));timer.setTextColor(stageColor);countsText.setText(s.preparation()?"调整姿势 · 准备好再开始":s.exercise()?(s.manual?"手动完成 · ":"")+"第 "+s.set+" / "+s.sets+" 组 · 已完成 "+e.completed+" 组":"放松呼吸 · 已完成 "+e.completed+" 组");pauseButton.setText(e.paused?"继续":"暂停");
         if(doneButton!=null){doneButton.setEnabled(!e.paused);doneButton.setAlpha(e.paused?.45f:1);doneButton.setText(e.paused?"继续后完成这一组":"完成这一组 →");}
         progress.setProgress((int)(1000*e.progressFraction(TimerService.now())));
-        ring.update(s.manual?1:e.remaining(TimerService.now()),s.manual?1:s.seconds*1000L,s.exercise()?ACCENT:ORANGE);
-        progress.setProgressTintList(android.content.res.ColorStateList.valueOf(s.exercise()?ACCENT:ORANGE));
+        ring.update(s.manual?1:e.remaining(TimerService.now()),s.manual?1:s.seconds*1000L,stageColor);
+        progress.setProgressTintList(android.content.res.ColorStateList.valueOf(stageColor));
         nextText.setText(e.index+1<e.stages.size()?"接下来  /  "+e.stages.get(e.index+1).name+" · "+stageDetail(e.stages.get(e.index+1)):"接下来  /  训练完成");
     }
     private void showHistory(){
@@ -318,7 +319,7 @@ public class MainActivity extends Activity {
         base("settings");LinearLayout box=content;box.addView(text("PREFERENCES / 偏好设置",12,ACCENT));box.addView(bold("训练设置",26,TEXT));box.addView(text("让每一次阶段切换更舒服",13,MUTED));gap(box,20);
         box.addView(settingToggle("阶段结束提示音","开始与继续使用开始音；休息、暂停与结束使用结束音","sound"));gap(box,10);
         box.addView(settingToggle("阶段结束振动","短暂触感提醒，可独立开关","vibrate"));gap(box,10);
-        gap(box,8);box.addView(bold("倒计时朗读",18,TEXT));box.addView(text("训练和休息分别设置，中文真人女声离线读秒。",12,MUTED));gap(box,10);
+        gap(box,8);box.addView(bold("倒计时朗读",18,TEXT));box.addView(text("训练和休息分别设置，中文真人女声离线读秒。训练朗读开启时，也会朗读开始前的 5 秒准备倒计时。",12,MUTED));gap(box,10);
         box.addView(countdownSetting(true));gap(box,10);box.addView(countdownSetting(false));gap(box,14);
         LinearLayout audio=column();audio.setPadding(dp(16),dp(12),dp(16),dp(12));audio.setBackground(background(CARD,18));
         TextView volume=text("音效与朗读音量 · "+Store.prefs(this).getInt("sound_volume",55)+"%",14,TEXT);audio.addView(volume);
@@ -327,7 +328,7 @@ public class MainActivity extends Activity {
         audio.addView(text("音效与读秒共用音量，叠加手机闹钟音量；试听不受音效开关影响。",12,MUTED));gap(audio,8);
         LinearLayout previews=row();weighted(previews,button("试听开始",BG,()->Chime.play(this,Chime.TRAINING)));weighted(previews,button("试听暂停 / 结束",BG,()->Chime.play(this,Chime.COMPLETE)));audio.addView(previews);box.addView(audio);gap(box,14);
         box.addView(button("读秒录音来源与许可  ›",CARD,this::voiceCredits));gap(box,14);
-        box.addView(text("力量计时 1.6.0 · 离线使用\n方案与训练记录保存在本机",12,MUTED));gap(box,20);
+        box.addView(text("力量计时 1.6.1 · 离线使用\n方案与训练记录保存在本机",12,MUTED));gap(box,20);
     }
     private void voiceCredits(){
         Panel panel=new Panel("VOICE / 读秒录音","真人女声录音","中文数字录音来自 Shtooka 开放音频库");

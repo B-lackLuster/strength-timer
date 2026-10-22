@@ -4,6 +4,7 @@ import java.util.*;
 
 /** Training timeline supports timed sets and manually completed repetition sets. */
 public final class Workout {
+    public static final int PREPARATION_SECONDS=5;
     public static final class Item {
         public String name;
         public int seconds, sets, smallRest, bigRest;
@@ -26,6 +27,7 @@ public final class Workout {
             this.name=name;this.kind=kind;this.seconds=seconds;this.set=set;this.sets=sets;this.itemIndex=itemIndex;
         }
         public boolean exercise() { return kind.equals("训练"); }
+        public boolean preparation() { return kind.equals("准备"); }
     }
     public static List<Stage> compile(List<Item> items) {
         List<Stage> out=new ArrayList<>();
@@ -40,6 +42,12 @@ public final class Workout {
             if(i.bigRest>0) out.add(new Stage(i.name+" · 动作后休息","大休息",i.bigRest,i.sets,i.sets,index));
         }
         return out;
+    }
+    /** Only new sessions receive preparation; saved timelines are restored as-is. */
+    public static List<Stage> compileSession(List<Item> items) {
+        List<Stage> stages=compile(items);
+        if(!stages.isEmpty())stages.add(0,new Stage("准备开始","准备",PREPARATION_SECONDS,0,0,-1));
+        return stages;
     }
     public static final class Engine {
         public final List<Stage> stages;

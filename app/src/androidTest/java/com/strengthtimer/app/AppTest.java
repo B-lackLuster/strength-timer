@@ -30,6 +30,7 @@ public class AppTest {
     void shot(String name)throws Exception {InstrumentationRegistry.getInstrumentation().waitForIdleSync();SystemClock.sleep(600);capture(name);}
     void capture(String name)throws Exception {Bitmap b=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();File dir=new File(context.getExternalFilesDir(null),"screenshots");dir.mkdirs();try(FileOutputStream out=new FileOutputStream(new File(dir,name+".png"))){b.compress(Bitmap.CompressFormat.PNG,100,out);}b.recycle();}
     View pageView(MainActivity activity){try{java.lang.reflect.Field field=MainActivity.class.getDeclaredField("pageRoot");field.setAccessible(true);return (View)field.get(activity);}catch(ReflectiveOperationException error){throw new AssertionError(error);}}
+    void skipPreparation(){assertTrue(TimerService.engine.current().preparation());context.startForegroundService(new Intent(context,TimerService.class).setAction("SKIP"));SystemClock.sleep(400);assertFalse(TimerService.engine.current().preparation());assertEquals(0,TimerService.engine.completed);assertEquals(0,TimerService.engine.skipped);}
     @Test public void editPlanAndInsertRest()throws Exception{
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
             onView(withText("平板支撑")).check(matches(isDisplayed()));shot("01-plan");onView(withText("平板支撑")).perform(click());shot("08-edit-exercise");onView(withText("1分")).perform(scrollTo(),click());onView(withText("保存")).perform(click());assertEquals(60,Store.load(context).get(0).seconds);
@@ -40,7 +41,7 @@ public class AppTest {
     @Test public void runPauseSkipAndSaveHistory()throws Exception{
         Store.save(context,Arrays.asList(new Workout.Item("测试平板",30,2,20,10)));
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
-            onView(withText("开始训练 →")).perform(click());SystemClock.sleep(700);shot("02-training");
+            onView(withText("开始训练 →")).perform(click());skipPreparation();SystemClock.sleep(700);shot("02-training");
             onView(withText("暂停")).perform(scrollTo(),click());SystemClock.sleep(500);assertTrue(TimerService.engine.paused);
             onView(withText("跳过当前阶段")).perform(scrollTo(),click());onView(withText("跳过")).inRoot(isDialog()).perform(click());SystemClock.sleep(500);assertEquals(0,TimerService.engine.completed);assertEquals(1,TimerService.engine.skipped);assertEquals("小休息",TimerService.engine.current().kind);shot("03-rest-paused");
             onView(withText("结束本次训练")).perform(scrollTo(),click());onView(withText("结束并保存")).inRoot(isDialog()).perform(click());SystemClock.sleep(700);assertEquals(1,Store.history(context).length());assertEquals(0,Store.history(context).getJSONObject(0).getInt("count"));shot("04-history");
@@ -49,7 +50,47 @@ public class AppTest {
     @Test public void automaticallyTransitionsAndCompletes()throws Exception{
         Store.save(context,Arrays.asList(new Workout.Item("快速验证",1,2,1,1)));
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
-            onView(withText("开始训练 →")).perform(click());a.moveToState(androidx.lifecycle.Lifecycle.State.CREATED);SystemClock.sleep(5000);a.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED);SystemClock.sleep(300);onView(withText("训练完成 ✓")).check(matches(isDisplayed()));assertEquals(2,TimerService.engine.completed);assertEquals(1,Store.history(context).length());assertEquals(2,Store.history(context).getJSONObject(0).getInt("count"));shot("05-complete");context.startForegroundService(new Intent(context,TimerService.class).setAction("SKIP"));SystemClock.sleep(400);assertEquals(1,Store.history(context).length());
+            onView(withText("开始训练 →")).perform(click());a.moveToState(androidx.lifecycle.Lifecycle.State.CREATED);SystemClock.sleep(10000);a.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED);SystemClock.sleep(300);onView(withText("训练完成 ✓")).check(matches(isDisplayed()));assertEquals(2,TimerService.engine.completed);assertEquals(1,Store.history(context).length());assertEquals(2,Store.history(context).getJSONObject(0).getInt("count"));assertEquals(2,Store.history(context).getJSONObject(0).getInt("seconds"));shot("05-complete");a.recreate();onView(withText("训练完成 ✓")).check(matches(isDisplayed()));assertEquals(1,Store.history(context).length());context.startForegroundService(new Intent(context,TimerService.class).setAction("SKIP"));SystemClock.sleep(400);assertEquals(1,Store.history(context).length());
+        }
+    }
+    @Test public void preparationCountdownSurvivesActivityRecreation()throws Exception{
+        Store.save(context,Arrays.asList(new Workout.Item("准备验证",30,1,0,0)));
+        try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
+            a.onActivity(activity->{
+                findText(activity.getWindow().getDecorView(),"开始训练 →").performClick();
+                assertTrue(TimerService.engine.current().preparation());assertEquals(0,TimerService.engine.index);
+                assertNotNull(findText(pageView(activity),"准备开始"));assertNotNull(findText(pageView(activity),"准备 · 第一项任务即将开始"));
+                assertNotNull(findText(pageView(activity),"00:05"));assertNotNull(findText(pageView(activity),"接下来  /  准备验证 · 30秒"));
+                findText(pageView(activity),"暂停").performClick();
+            });
+            SystemClock.sleep(300);
+            Workout.Engine running=TimerService.engine;assertTrue(running.paused);assertTrue(running.current().preparation());long remaining=running.remaining(TimerService.now());
+            assertTrue(remaining>0&&remaining<=5000);a.recreate();SystemClock.sleep(300);
+            assertSame(running,TimerService.engine);assertEquals(remaining,running.remaining(TimerService.now()));assertEquals(0,running.completed);assertEquals(0,running.trainedMillis);
+            onView(withText("准备开始")).check(matches(isDisplayed()));onView(withText("继续")).perform(scrollTo()).check(matches(isDisplayed()));shot("20-preparation-paused");
+            onView(withText("跳过当前阶段")).perform(scrollTo(),click());onView(withText("跳过")).inRoot(isDialog()).perform(click());SystemClock.sleep(400);
+            assertEquals("准备验证",running.current().name);assertEquals(1,running.index);assertEquals(0,running.completed);assertEquals(0,running.skipped);assertTrue(running.paused);
+            onView(withText("准备开始")).check(doesNotExist());
+            onView(withText("继续")).perform(scrollTo(),click());SystemClock.sleep(200);assertFalse(running.paused);
+        }
+    }
+    @Test public void preparationRestoresPausedWithItsRemainingTimeAndSession()throws Exception{
+        Store.save(context,Arrays.asList(new Workout.Item("恢复验证",30,1,0,0)));
+        String sessionId;long remaining;
+        try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
+            a.onActivity(activity->{findText(activity.getWindow().getDecorView(),"开始训练 →").performClick();findText(pageView(activity),"暂停").performClick();});SystemClock.sleep(300);
+            assertTrue(TimerService.engine.paused);assertTrue(TimerService.engine.current().preparation());sessionId=TimerService.engine.sessionId;remaining=TimerService.engine.remaining(TimerService.now());
+            assertTrue(remaining>0&&remaining<=5000);
+        }
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(()->context.stopService(new Intent(context,TimerService.class)));SystemClock.sleep(400);
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(()->TimerService.engine=null);
+        try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
+            Workout.Engine restored=TimerService.engine;assertNotNull(restored);assertTrue(restored.paused);assertTrue(restored.current().preparation());
+            assertEquals(sessionId,restored.sessionId);assertEquals(remaining,restored.remaining(TimerService.now()));assertEquals(0,restored.index);
+            assertEquals(0,restored.completed);assertEquals(0,restored.skipped);assertEquals(0,restored.trainedMillis);assertTrue(restored.counts.isEmpty());
+            int preparationCount=0;for(Workout.Stage stage:restored.stages)if(stage.preparation())preparationCount++;assertEquals(1,preparationCount);
+            onView(withText("准备开始")).check(matches(isDisplayed()));onView(withText("继续")).perform(scrollTo(),click());SystemClock.sleep(200);assertFalse(restored.paused);
+            SystemClock.sleep(remaining+300);assertEquals("恢复验证",restored.current().name);assertEquals(1,restored.index);assertEquals(0,restored.completed);assertEquals(0,restored.trainedMillis);
         }
     }
     private View findText(View view,String value){
@@ -68,7 +109,7 @@ public class AppTest {
             onView(withText("使用方案")).perform(click());assertEquals("深蹲",Store.load(context).get(0).name);
             onView(withText("切换方案")).perform(click());onView(withText("已保存 · My workout")).perform(click());
             onView(withText("使用方案")).perform(click());assertEquals("平板支撑",Store.load(context).get(0).name);
-            onView(withText("开始训练 →")).perform(click());SystemClock.sleep(500);
+            onView(withText("开始训练 →")).perform(click());skipPreparation();SystemClock.sleep(500);
             onView(withContentDescription("返回训练计划")).perform(click());onView(withText("切换方案")).perform(click());
             assertNotNull(TimerService.engine);assertEquals("平板支撑",TimerService.engine.current().name);
         }
@@ -167,7 +208,7 @@ public class AppTest {
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
             onView(withText("哑铃划船")).perform(click());onView(withContentDescription("非计时训练")).perform(scrollTo(),click());
             onView(withContentDescription("每组次数（1–999）")).perform(scrollTo(),replaceText("12"),androidx.test.espresso.action.ViewActions.closeSoftKeyboard());onView(withText("保存")).perform(click());assertTrue(Store.load(context).get(0).manual);assertEquals(12,Store.load(context).get(0).repetitions);
-            onView(withText("开始训练 →")).perform(click());SystemClock.sleep(700);onView(withText("12 次")).check(matches(isDisplayed()));assertEquals(0,TimerService.engine.completed);shot("11-manual-set");
+            onView(withText("开始训练 →")).perform(click());skipPreparation();SystemClock.sleep(700);onView(withText("12 次")).check(matches(isDisplayed()));assertEquals(0,TimerService.engine.completed);shot("11-manual-set");
             onView(withText("完成这一组 →")).perform(click());SystemClock.sleep(1500);assertTrue(TimerService.engine.current().manual);assertEquals(2,TimerService.engine.current().set);assertEquals(1,TimerService.engine.completed);
             onView(withText("完成这一组 →")).perform(click());SystemClock.sleep(1600);onView(withText("训练完成 ✓")).check(matches(isDisplayed()));assertEquals(2,TimerService.engine.completed);assertEquals(2,Store.history(context).getJSONObject(0).getInt("count"));
         }
