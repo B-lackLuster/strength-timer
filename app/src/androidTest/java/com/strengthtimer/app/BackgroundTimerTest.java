@@ -59,14 +59,15 @@ public class BackgroundTimerTest {
         throw new AssertionError("Missing notification action: "+title);
     }
     private boolean speechPlaying(){
-        for(AudioPlaybackConfiguration config:audio.getActivePlaybackConfigurations())if(config.isActive()&&config.getAudioAttributes().getContentType()==AudioAttributes.CONTENT_TYPE_SPEECH)return true;
+        // Public playback monitoring already filters the list to active players.
+        for(AudioPlaybackConfiguration config:audio.getActivePlaybackConfigurations())if(config.getAudioAttributes().getContentType()==AudioAttributes.CONTENT_TYPE_SPEECH)return true;
         return false;
     }
     private void assertSilent(){SystemClock.sleep(250);assertFalse("Old digit must stop",speechPlaying());}
     private AtomicInteger observeSpeech(AudioManager.AudioPlaybackCallback[] holder){
         AtomicInteger starts=new AtomicInteger();
         holder[0]=new AudioManager.AudioPlaybackCallback(){@Override public void onPlaybackConfigChanged(List<AudioPlaybackConfiguration> configurations){
-            for(AudioPlaybackConfiguration config:configurations)if(config.isActive()&&config.getAudioAttributes().getContentType()==AudioAttributes.CONTENT_TYPE_SPEECH){starts.incrementAndGet();break;}
+            for(AudioPlaybackConfiguration config:configurations)if(config.getAudioAttributes().getContentType()==AudioAttributes.CONTENT_TYPE_SPEECH){starts.incrementAndGet();break;}
         }};
         audio.registerAudioPlaybackCallback(holder[0],new android.os.Handler(android.os.Looper.getMainLooper()));return starts;
     }
