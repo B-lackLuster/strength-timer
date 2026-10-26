@@ -31,6 +31,17 @@ public class AppTest {
     void capture(String name)throws Exception {Bitmap b=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();File dir=new File(context.getExternalFilesDir(null),"screenshots");dir.mkdirs();try(FileOutputStream out=new FileOutputStream(new File(dir,name+".png"))){b.compress(Bitmap.CompressFormat.PNG,100,out);}b.recycle();}
     View pageView(MainActivity activity){try{java.lang.reflect.Field field=MainActivity.class.getDeclaredField("pageRoot");field.setAccessible(true);return (View)field.get(activity);}catch(ReflectiveOperationException error){throw new AssertionError(error);}}
     void skipPreparation(){assertTrue(TimerService.engine.current().preparation());context.startForegroundService(new Intent(context,TimerService.class).setAction("SKIP"));SystemClock.sleep(400);assertFalse(TimerService.engine.current().preparation());assertEquals(0,TimerService.engine.completed);assertEquals(0,TimerService.engine.skipped);}
+    void awaitPause(){
+        // Foreground service commands arrive asynchronously; a loaded emulator can
+        // spend longer than 300 ms delivering them. Read on the owning main thread.
+        long deadline=SystemClock.elapsedRealtime()+3000;boolean[] paused={false};
+        do{
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(()->paused[0]=TimerService.engine!=null&&TimerService.engine.paused);
+            if(paused[0])return;
+            SystemClock.sleep(25);
+        }while(SystemClock.elapsedRealtime()<deadline);
+        fail("Pause command was not applied within 3 seconds");
+    }
     @Test public void editPlanAndInsertRest()throws Exception{
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
             onView(withText("平板支撑")).check(matches(isDisplayed()));shot("01-plan");onView(withText("平板支撑")).perform(click());shot("08-edit-exercise");onView(withText("1分")).perform(scrollTo(),click());onView(withText("保存")).perform(click());assertEquals(60,Store.load(context).get(0).seconds);
@@ -63,7 +74,7 @@ public class AppTest {
                 assertNotNull(findText(pageView(activity),"00:05"));assertNotNull(findText(pageView(activity),"接下来  /  准备验证 · 30秒"));
                 findText(pageView(activity),"暂停").performClick();
             });
-            SystemClock.sleep(300);
+            awaitPause();
             Workout.Engine running=TimerService.engine;assertTrue(running.paused);assertTrue(running.current().preparation());long remaining=running.remaining(TimerService.now());
             assertTrue(remaining>0&&remaining<=5000);a.recreate();SystemClock.sleep(300);
             assertSame(running,TimerService.engine);assertEquals(remaining,running.remaining(TimerService.now()));assertEquals(0,running.completed);assertEquals(0,running.trainedMillis);
@@ -78,7 +89,7 @@ public class AppTest {
         Store.save(context,Arrays.asList(new Workout.Item("恢复验证",30,1,0,0)));
         String sessionId;long remaining;
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
-            a.onActivity(activity->{findText(activity.getWindow().getDecorView(),"开始训练 →").performClick();findText(pageView(activity),"暂停").performClick();});SystemClock.sleep(300);
+            a.onActivity(activity->{findText(activity.getWindow().getDecorView(),"开始训练 →").performClick();findText(pageView(activity),"暂停").performClick();});awaitPause();
             assertTrue(TimerService.engine.paused);assertTrue(TimerService.engine.current().preparation());sessionId=TimerService.engine.sessionId;remaining=TimerService.engine.remaining(TimerService.now());
             assertTrue(remaining>0&&remaining<=5000);
         }
