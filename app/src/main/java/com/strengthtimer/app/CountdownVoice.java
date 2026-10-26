@@ -1,13 +1,14 @@
 package com.strengthtimer.app;
 
 import android.content.Context;
+import android.content.res.AssetFileDescriptor;
 import android.media.AudioAttributes;
-import android.media.SoundPool;
+import android.media.MediaPlayer;
+import android.os.PowerManager;
 import android.os.SystemClock;
-import java.util.HashSet;
-import java.util.Set;
+import java.io.IOException;
 
-/** Bundled Mandarin digits work offline without an installed speech engine. */
+/** One wake-aware player for the current bundled Mandarin digit, including screen-off playback. */
 final class CountdownVoice {
     private static final int[] resources={0,
         R.raw.count_01,R.raw.count_02,R.raw.count_03,R.raw.count_04,R.raw.count_05,
@@ -22,32 +23,34 @@ final class CountdownVoice {
         R.raw.count_46,R.raw.count_47,R.raw.count_48,R.raw.count_49,R.raw.count_50,
         R.raw.count_51,R.raw.count_52,R.raw.count_53,R.raw.count_54,R.raw.count_55,
         R.raw.count_56,R.raw.count_57,R.raw.count_58,R.raw.count_59,R.raw.count_60};
-    private static final int[] sounds=new int[61];
-    private static final Set<Integer> loaded=new HashSet<>();
-    private static SoundPool pool;
-    private static int stream,pending;
-    private static long pendingUntil;
-    private static float pendingVolume;
-    static synchronized void init(Context context){
-        if(pool!=null)return;
-        try{
-            pool=new SoundPool.Builder().setMaxStreams(1).setAudioAttributes(new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build()).build();
-            pool.setOnLoadCompleteListener((p,id,status)->{synchronized(CountdownVoice.class){
-                if(p!=pool)return;
-                if(status==0)loaded.add(id);
-                if(pending==id){if(status==0&&SystemClock.elapsedRealtime()<pendingUntil)playLoaded(id,pendingVolume);pending=0;}
-            }});
-            Context app=context.getApplicationContext();for(int n=1;n<sounds.length;n++)sounds[n]=pool.load(app,resources[n],1);
-        }catch(RuntimeException error){if(pool!=null)pool.release();pool=null;loaded.clear();stream=0;pending=0;}
-    }
+    private static MediaPlayer player;
     static synchronized void play(Context context,int second,long validUntil){
         if(second<1||second>60||SystemClock.elapsedRealtime()>=validUntil)return;
-        init(context);if(pool==null)return;
-        stop();float volume=Math.max(0,Math.min(100,Store.prefs(context).getInt("sound_volume",55)))/100f;if(volume==0)return;
-        int id=sounds[second];if(loaded.contains(id))playLoaded(id,volume);
-        else{pending=id;pendingUntil=validUntil;pendingVolume=volume;}
+        stop();
+        float volume=Math.max(0,Math.min(100,Store.prefs(context).getInt("sound_volume",55)))/100f;
+        if(volume==0)return;
+        MediaPlayer next=new MediaPlayer();player=next;
+        try(AssetFileDescriptor file=context.getResources().openRawResourceFd(resources[second])){
+            next.setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
+            next.setWakeMode(context.getApplicationContext(),PowerManager.PARTIAL_WAKE_LOCK);
+            next.setVolume(volume,volume);
+            next.setDataSource(file.getFileDescriptor(),file.getStartOffset(),file.getLength());
+            next.setOnPreparedListener(ready->{synchronized(CountdownVoice.class){
+                if(player!=ready)return;
+                // Slow decoding must not replay a digit whose second has already passed.
+                if(SystemClock.elapsedRealtime()>=validUntil){stop();return;}
+                try{ready.start();}catch(RuntimeException error){stop();}
+            }});
+            next.setOnCompletionListener(done->{synchronized(CountdownVoice.class){if(player==done)stop();}});
+            next.setOnErrorListener((failed,what,extra)->{synchronized(CountdownVoice.class){if(player==failed)stop();}return true;});
+            next.prepareAsync();
+        }catch(IOException|RuntimeException error){stop();}
     }
-    private static void playLoaded(int id,float volume){if(stream!=0)pool.stop(stream);stream=pool.play(id,volume,volume,1,0,1);}
-    static synchronized void stop(){pending=0;if(pool!=null&&stream!=0)pool.stop(stream);stream=0;}
+    static synchronized void stop(){
+        if(player==null)return;
+        MediaPlayer old=player;player=null;
+        old.setOnPreparedListener(null);old.setOnCompletionListener(null);old.setOnErrorListener(null);
+        old.release();
+    }
 }

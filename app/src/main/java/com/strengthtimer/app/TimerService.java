@@ -2,8 +2,8 @@ package com.strengthtimer.app;
 
 import android.app.*;
 import android.content.*;
+import android.content.pm.ServiceInfo;
 import android.os.*;
-import android.media.*;
 
 public class TimerService extends Service {
     static Workout.Engine engine;
@@ -18,15 +18,15 @@ public class TimerService extends Service {
         super.onCreate();handler=new Handler(getMainLooper());
         getSystemService(NotificationManager.class).createNotificationChannel(new NotificationChannel(CHANNEL,"训练计时",NotificationManager.IMPORTANCE_LOW));
         lock=((PowerManager)getSystemService(POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"strength:timer");
+        lock.setReferenceCounted(false);
         Chime.init(this);
-        CountdownVoice.init(this);
         if(engine==null)engine=Store.restore(this);
         recorded=engine!=null&&engine.finished;
     }
     @Override public int onStartCommand(Intent intent,int flags,int startId){
         String action=intent==null?"RESTORE":intent.getAction();
         // Even late control intents must satisfy Android's foreground-start contract.
-        startForeground(1,notification());
+        foreground();
         if("START".equals(action)){
             if(engine==null||engine.finished){engine=new Workout.Engine(Workout.compileSession(Store.load(this)),now());recorded=false;}
             if(!engine.finished)signal();
@@ -37,21 +37,36 @@ public class TimerService extends Service {
             if("STOP".equals(action)){engine.tick(now());Store.finish(this,engine,engine.finished);recorded=true;signal(Chime.COMPLETE);engine=null;shutdown();return START_NOT_STICKY;}
         }
         if(engine==null||engine.finished){if(engine!=null&&!recorded){Store.finish(this,engine,true);recorded=true;signal();}shutdown();return START_NOT_STICKY;}
-        startForeground(1,notification());
+        updateWakeLock();
+        foreground();
         handler.removeCallbacks(tick);handler.post(tick);
         Store.session(this,engine,now());
         return START_STICKY;
     }
     private final Runnable tick=new Runnable(){public void run(){
         if(engine==null){CountdownVoice.stop();return;}
-        if(engine.tick(now())>0)signal();
+        int transitions=engine.tick(now());
+        if(transitions>0)signal();
         if(engine.finished){if(!recorded){Store.finish(TimerService.this,engine,true);recorded=true;}shutdown();return;}
+        updateWakeLock();
         readCountdown();
-        if(engine.paused){if(lock.isHeld())lock.release();}else if(!lock.isHeld())lock.acquire(6*60*60*1000L);
-        getSystemService(NotificationManager.class).notify(1,notification());
+        // System UI owns the seconds; publish only when the stage or controls change.
+        if(transitions>0)getSystemService(NotificationManager.class).notify(1,notification());
         if(now()-lastSave>=1000){Store.session(TimerService.this,engine,now());lastSave=now();}
         handler.postDelayed(this,200);
     }};
+    private void foreground(){
+        if(Build.VERSION.SDK_INT>=34)startForeground(1,notification(),ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE|ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
+        else startForeground(1,notification());
+    }
+    @android.annotation.SuppressLint("WakelockTimeout")
+    private void updateWakeLock(){
+        // Hold only for an active timed stage, including preparation and rest.
+        // Pause, manual sets, completion and destruction all release the lock.
+        boolean needed=engine!=null&&!engine.finished&&!engine.paused&&!engine.current().manual;
+        if(needed&&!lock.isHeld())lock.acquire();
+        else if(!needed&&lock.isHeld())lock.release();
+    }
     private Notification notification(){
         if(engine==null||engine.finished)return new Notification.Builder(this,CHANNEL).setSmallIcon(R.drawable.ic_app).setContentTitle("力量计时").setContentText("正在准备训练").setOnlyAlertOnce(true).setOngoing(true).build();
         Workout.Stage s=engine.current();
@@ -59,7 +74,8 @@ public class TimerService extends Service {
         String label=engine.paused?"继续":"暂停";
         PendingIntent pause=PendingIntent.getService(this,1,new Intent(this,TimerService.class).setAction("PAUSE"),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         PendingIntent skip=PendingIntent.getService(this,2,new Intent(this,TimerService.class).setAction("SKIP"),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
-        Notification.Builder builder=new Notification.Builder(this,CHANNEL).setSmallIcon(com.strengthtimer.app.R.drawable.ic_app).setContentTitle((engine.paused?"已暂停 · ":"")+(s.manual?"次数训练":s.kind)+" · "+s.name).setContentText((s.manual?"目标 "+s.repetitions+" 次 · 第 "+s.set+"/"+s.sets+" 组":MainActivity.clock(engine.remaining(now())))+" · 已完成 "+engine.completed+" 组").setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true);
+        Notification.Builder builder=new Notification.Builder(this,CHANNEL).setSmallIcon(com.strengthtimer.app.R.drawable.ic_app).setContentTitle((engine.paused?"已暂停 · ":"")+(s.manual?"次数训练":s.kind)+" · "+s.name).setContentText((s.manual?"目标 "+s.repetitions+" 次 · 第 "+s.set+"/"+s.sets+" 组":engine.paused?MainActivity.clock(engine.remaining(now())):"剩余时间")+" · 已完成 "+engine.completed+" 组").setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true).setShowWhen(false);
+        if(!s.manual&&!engine.paused)builder.setWhen(System.currentTimeMillis()+engine.remaining(now())).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true);
         if(s.manual&&!engine.paused){Intent complete=new Intent(this,TimerService.class).setAction("COMPLETE").setData(android.net.Uri.parse("strengthtimer://complete/"+engine.sessionId+"/"+engine.index)).putExtra("session_id",engine.sessionId).putExtra("stage_index",engine.index);PendingIntent done=PendingIntent.getService(this,3,complete,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);builder.addAction(new Notification.Action.Builder(null,"完成这一组",done).build());}
         return builder.addAction(new Notification.Action.Builder(null,label,pause).build()).addAction(new Notification.Action.Builder(null,"跳过",skip).build()).build();
     }
