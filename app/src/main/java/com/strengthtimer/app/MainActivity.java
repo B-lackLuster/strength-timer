@@ -50,7 +50,7 @@ public class MainActivity extends Activity {
         if(Build.VERSION.SDK_INT>=30)root.setOnApplyWindowInsetsListener((v,insets)->{android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars());root.setPadding(dp(20),bars.top,dp(20),bars.bottom);return insets;});
         // API 26–29 use legacy insets; modern edge-to-edge devices use the same safe areas.
         if(Build.VERSION.SDK_INT<30)root.setOnApplyWindowInsetsListener((v,insets)->{root.setPadding(dp(20),insets.getSystemWindowInsetTop(),dp(20),insets.getSystemWindowInsetBottom());return insets;});
-        setContentView(root);root.requestApplyInsets();Chime.init(this);CountdownVoice.init(this);
+        setContentView(root);root.requestApplyInsets();Chime.init(this);
         if(TimerService.engine==null)TimerService.engine=Store.restore(this);
         if(b!=null){ArrayList<String> stack=b.getStringArrayList("backStack");if(stack!=null)backStack.addAll(stack);Bundle positions=b.getBundle("scrollPositions");if(positions!=null)for(String key:positions.keySet())scrollPositions.put(key,positions.getInt(key));pendingExport=b.getString("pendingExport");}
         String restored=b==null?"":b.getString("page","");
@@ -328,7 +328,18 @@ public class MainActivity extends Activity {
         audio.addView(text("音效与读秒共用音量，叠加手机闹钟音量；试听不受音效开关影响。",12,MUTED));gap(audio,8);
         LinearLayout previews=row();weighted(previews,button("试听开始",BG,()->Chime.play(this,Chime.TRAINING)));weighted(previews,button("试听暂停 / 结束",BG,()->Chime.play(this,Chime.COMPLETE)));audio.addView(previews);box.addView(audio);gap(box,14);
         box.addView(button("读秒录音来源与许可  ›",CARD,this::voiceCredits));gap(box,14);
-        box.addView(text("力量计时 1.6.1 · 离线使用\n方案与训练记录保存在本机",12,MUTED));gap(box,20);
+        box.addView(button("后台计时与朗读设置  ›",CARD,this::backgroundSettings));gap(box,14);
+        box.addView(text("力量计时 "+BuildConfig.VERSION_NAME+" · 离线使用\n方案与训练记录保存在本机",12,MUTED));gap(box,20);
+    }
+    private void backgroundSettings(){
+        boolean unrestricted=getSystemService(PowerManager.class).isIgnoringBatteryOptimizations(getPackageName());
+        Panel panel=new Panel("BACKGROUND / 后台运行","后台计时与朗读","切换应用或锁屏后，继续计时和读秒");
+        panel.body.addView(text((unrestricted?"系统电池优化：已允许后台运行":"系统电池优化：尚未豁免")+"\n\n如切到后台后停止朗读，请允许后台运行，并允许通知。vivo / iQOO 手机还可能需要在系统的应用耗电管理中，为力量计时开启「允许后台高耗电」。\n\n朗读需开启训练或休息倒计时朗读，并调高应用音量和手机闹钟音量。",14,TEXT));
+        panel.footer.addView(button(unrestricted?"查看应用系统设置":"允许后台运行",ACCENT,()->{
+            Intent details=new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,android.net.Uri.parse("package:"+getPackageName()));
+            Intent request=new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,android.net.Uri.parse("package:"+getPackageName()));
+            try{startActivity(unrestricted?details:request);panel.dialog.dismiss();}catch(ActivityNotFoundException error){try{startActivity(details);panel.dialog.dismiss();}catch(ActivityNotFoundException missing){toast("请在系统设置中允许力量计时后台运行");}}
+        }));panel.show(500);
     }
     private void voiceCredits(){
         Panel panel=new Panel("VOICE / 读秒录音","真人女声录音","中文数字录音来自 Shtooka 开放音频库");

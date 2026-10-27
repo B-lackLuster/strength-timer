@@ -47,4 +47,4 @@ if [ "$app_focus_ready" != true ]; then
 fi
 
 adb shell am instrument -w com.strengthtimer.app.test/androidx.test.runner.AndroidJUnitRunner | tee instrument-results.txt
-grep -q 'OK (16 tests)' instrument-results.txt
+grep -q 'OK (20 tests)' instrument-results.txt
