@@ -275,13 +275,14 @@ public class AppTest {
     }
     void awaitOrientation(ActivityScenario<MainActivity> a,int orientation){
         // Turning the screen recreates the activity; wait for the instance that has the new shape.
-        long deadline=SystemClock.elapsedRealtime()+15000;int[] current={0};
+        long deadline=SystemClock.elapsedRealtime()+15000;int[] current={0,0};
         do{
-            a.onActivity(activity->current[0]=activity.getResources().getConfiguration().orientation);
+            a.onActivity(activity->{current[0]=activity.getResources().getConfiguration().orientation;current[1]=activity.getRequestedOrientation();});
             if(current[0]==orientation){InstrumentationRegistry.getInstrumentation().waitForIdleSync();SystemClock.sleep(500);return;}
             SystemClock.sleep(100);
         }while(SystemClock.elapsedRealtime()<deadline);
-        fail("Screen did not turn within 15 seconds");
+        android.content.ContentResolver resolver=context.getContentResolver();
+        fail("Screen did not turn within 15 seconds: orientation="+current[0]+" requested="+current[1]+" autoRotate="+android.provider.Settings.System.getInt(resolver,android.provider.Settings.System.ACCELEROMETER_ROTATION,-1)+" userRotation="+android.provider.Settings.System.getInt(resolver,android.provider.Settings.System.USER_ROTATION,-1));
     }
     @Test public void landscapeSplitsThePagesAndPortraitLockTurnsBack()throws Exception{
         Store.save(context,Arrays.asList(new Workout.Item("横屏验证",30,2,20,10)));
@@ -296,8 +297,12 @@ public class AppTest {
             a.onActivity(activity->{int[] dial=new int[2],pause=new int[2];View counts=findText(pageView(activity),"第 1 / 2 组 · 已完成 0 组");assertNotNull(counts);counts.getLocationOnScreen(dial);findText(pageView(activity),"暂停").getLocationOnScreen(pause);assertTrue(counts.getWidth()>0);assertTrue(dial[0]+counts.getWidth()<=pause[0]);});
             onView(withText("设置")).perform(click());SystemClock.sleep(500);onView(withContentDescription("锁定竖屏")).perform(scrollTo());shot("24-landscape-settings");
             onView(withContentDescription("锁定竖屏")).perform(click());awaitOrientation(a,android.content.res.Configuration.ORIENTATION_PORTRAIT);
-            assertTrue(Store.prefs(context).getBoolean("lock_portrait",false));onView(withContentDescription("锁定竖屏")).perform(scrollTo()).check(matches(isChecked()));
-            onView(withContentDescription("锁定竖屏")).perform(click());awaitOrientation(a,android.content.res.Configuration.ORIENTATION_LANDSCAPE);assertFalse(Store.prefs(context).getBoolean("lock_portrait",true));
+            assertTrue(Store.prefs(context).getBoolean("lock_portrait",false));a.onActivity(activity->assertEquals(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,activity.getRequestedOrientation()));
+            onView(withContentDescription("锁定竖屏")).perform(scrollTo()).check(matches(isChecked()));
+            // Unlocking hands the choice back to the system. The emulator can meanwhile fall back to its upright sensor, so the test turns the screen again.
+            onView(withContentDescription("锁定竖屏")).perform(click());assertFalse(Store.prefs(context).getBoolean("lock_portrait",true));
+            a.onActivity(activity->assertEquals(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,activity.getRequestedOrientation()));
+            automation.setRotation(android.app.UiAutomation.ROTATION_FREEZE_90);awaitOrientation(a,android.content.res.Configuration.ORIENTATION_LANDSCAPE);
         }finally{
             // Later tests expect the upright screen, with auto-rotation left as it was found.
             automation.setRotation(android.app.UiAutomation.ROTATION_FREEZE_0);SystemClock.sleep(1500);if(auto)automation.setRotation(android.app.UiAutomation.ROTATION_UNFREEZE);

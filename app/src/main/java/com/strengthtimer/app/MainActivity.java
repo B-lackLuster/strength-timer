@@ -122,13 +122,13 @@ public class MainActivity extends Activity {
         if(Build.VERSION.SDK_INT>=29){scroll.setVerticalScrollbarThumbDrawable(background(0xff53635a,2));scroll.setVerticalScrollbarTrackDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));}
     }
     private void showPlan(){
-        // Wide windows keep the summary and the start button in a pane beside the list.
+        // Wide windows keep the summary and the start button in a pane beside the list, spaced tighter to fit a landscape phone.
         base("plan");boolean wide=wide();LinearLayout intro=wide?column():content;
-        intro.addView(text("WORKOUT / 今日训练",12,ACCENT));intro.addView(bold("今天，练得更稳。",28,TEXT));intro.addView(text("长按 ≡ 拖动排序 · 点击卡片编辑",13,MUTED));gap(intro,18);
+        intro.addView(text("WORKOUT / 今日训练",12,ACCENT));intro.addView(bold("今天，练得更稳。",28,TEXT));intro.addView(text("长按 ≡ 拖动排序 · 点击卡片编辑",13,MUTED));gap(intro,wide?10:18);
         List<Workout.Stage> stages=Workout.compileSession(plan);long seconds=0;int sets=0;for(Workout.Stage s:stages){seconds+=s.seconds;if(s.exercise())sets++;}
         int exercises=0,manuals=0;for(Workout.Item item:plan)if(!item.rest){exercises++;if(item.manual)manuals++;}
-        LinearLayout stats=row();weighted(stats,metric("训练动作",String.valueOf(exercises),TEXT));weighted(stats,metric("目标组数",String.valueOf(sets),ACCENT));weighted(stats,metric(manuals>0?"固定用时":"预计用时",time((int)seconds),TEXT));intro.addView(stats);if(manuals>0)intro.addView(text("另含 "+manuals+" 个次数动作，完成时间由你决定。",12,MUTED));gap(intro,16);
-        LinearLayout library=row();weighted(library,button("切换方案",CARD,()->choosePlan()));weighted(library,button("保存方案",CARD,()->savePlan()));intro.addView(library);gap(intro,18);
+        LinearLayout stats=row();weighted(stats,metric("训练动作",String.valueOf(exercises),TEXT));weighted(stats,metric("目标组数",String.valueOf(sets),ACCENT));weighted(stats,metric(manuals>0?"固定用时":"预计用时",time((int)seconds),TEXT));intro.addView(stats);if(manuals>0)intro.addView(text("另含 "+manuals+" 个次数动作，完成时间由你决定。",12,MUTED));gap(intro,wide?10:16);
+        LinearLayout library=row();weighted(library,button("切换方案",CARD,()->choosePlan()));weighted(library,button("保存方案",CARD,()->savePlan()));intro.addView(library);if(!wide)gap(intro,18);
         content.addView(bold("训练清单",18,TEXT));gap(content,10);
         if(plan.isEmpty()){content.addView(text("还没有训练动作。添加动作，或从切换方案中选择一个模板。",15,MUTED));gap(content,16);}
         for(int n=0;n<plan.size();n++){
@@ -289,13 +289,13 @@ public class MainActivity extends Activity {
         if(wide){FrameLayout pane=new FrameLayout(this);pane.addView(dial,new FrameLayout.LayoutParams(-1,-1,Gravity.CENTER));host=split(pane,1);content.setGravity(Gravity.CENTER_VERTICAL);content.addView(stageMeta);content.addView(stageTitle);gap(content,16);}
         else{gap(content,24);content.addView(stageMeta);content.addView(stageTitle);gap(content,24);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(roomy?400:280));lp.gravity=Gravity.CENTER_HORIZONTAL;content.addView(dial,lp);gap(content,22);}
         progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);progress.setMax(1000);
-        progress.setProgressDrawable(roundedTrack(3));progress.setProgressTintList(android.content.res.ColorStateList.valueOf(ACCENT));content.addView(progress,new LinearLayout.LayoutParams(-1,dp(6)));gap(content,16);nextText=text("",14,MUTED);content.addView(nextText);gap(content,24);
+        progress.setProgressDrawable(roundedTrack(3));progress.setProgressTintList(android.content.res.ColorStateList.valueOf(ACCENT));content.addView(progress,new LinearLayout.LayoutParams(-1,dp(6)));gap(content,16);nextText=text("",14,MUTED);content.addView(nextText);gap(content,wide?16:24);
         // Each stage names what leaving it early does. The request carries the stage it was confirmed for, so the service ignores it once that stage is over.
         String leave=stage.preparation()?"直接开始":stage.exercise()?"略过本组":"结束休息",ask=stage.preparation()?"直接开始训练？":stage.exercise()?"略过这一组？":"提前结束休息？";
         String effect=stage.preparation()?"将结束准备倒计时，马上进入第一项。":stage.exercise()?"这一组不会计入完成次数。":shown+1<e.stages.size()?"将直接进入下一阶段。":"这是最后一段休息，训练将直接完成。";
         Intent skip=new Intent(this,TimerService.class).setAction("SKIP").putExtra("stage_index",shown).putExtra("session_id",session);
         LinearLayout controls=row();pauseButton=button(e.paused?"继续":"暂停",stage.manual?CARD:ACCENT,()->command("PAUSE"));weighted(controls,pauseButton);weighted(controls,button(leave,CARD,()->{if(stageDialog!=null)stageDialog.dismiss();stageDialog=confirm(ask,effect,stage.exercise()?"略过":leave,()->startForegroundService(skip));}));content.addView(controls);gap(content,12);
-        content.addView(button("结束本次训练",CARD,()->confirm("结束训练？","已完成的组数会保存到训练记录。","继续训练","结束并保存",()->{command("STOP");handler.postDelayed(()->historyAfterEnd(),300);})));gap(content,18);
+        content.addView(button("结束本次训练",CARD,()->confirm("结束训练？","已完成的组数会保存到训练记录。","继续训练","结束并保存",()->{command("STOP");handler.postDelayed(()->historyAfterEnd(),300);})));gap(content,wide?12:18);
         content.addView(text("切换应用或锁屏后仍会计时。若被系统强制关闭，下次打开会恢复到暂停状态。",12,MUTED));updateTimer();
         if(stage.manual){LinearLayout dock=column();dock.setPadding(0,dp(12),0,dp(2));doneButton=button("完成这一组 →",ACCENT,()->{doneButton.setEnabled(false);startForegroundService(new Intent(this,TimerService.class).setAction("COMPLETE").putExtra("stage_index",shown).putExtra("session_id",session));});dock.addView(doneButton);host.addView(dock,new LinearLayout.LayoutParams(-1,-2));updateTimer();}
     }
