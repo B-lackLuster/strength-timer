@@ -19,7 +19,8 @@ final class CountdownRing extends View {
     }
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        float stroke = 8 * getResources().getDisplayMetrics().density;
+        // Phones keep the 8dp stroke; on the larger dials of tablets it grows with the ring.
+        float stroke = Math.max(8 * getResources().getDisplayMetrics().density, Math.min(getWidth(), getHeight()) * .028f);
         float size = Math.min(getWidth(), getHeight()) - stroke * 2;
         float left = (getWidth() - size) / 2, top = (getHeight() - size) / 2;
         RectF bounds = new RectF(left, top, left + size, top + size);

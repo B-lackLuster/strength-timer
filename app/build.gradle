@@ -7,8 +7,8 @@ android {
         applicationId 'com.strengthtimer.app'
         minSdk 26
         targetSdk 35
-        versionCode 12
-        versionName '1.6.2'
+        versionCode 13
+        versionName '1.7.0'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }

@@ -32,7 +32,14 @@ public class TimerService extends Service {
             if(!engine.finished)signal();
         }else if(engine!=null&&!engine.finished){
             if("PAUSE".equals(action)){if(engine.paused){engine.resume(now());signal(Chime.TRAINING);}else{engine.pause(now());spoken.update(engine,now(),false,0);signal(Chime.REST);}}
-            if("SKIP".equals(action)){CountdownVoice.stop();engine.skip(now());if(!engine.finished)signal();}
+            if("SKIP".equals(action)){
+                // The training page names the stage its confirmation was opened for, so a sheet
+                // left open across a stage change can never skip the stage that follows.
+                int before=engine.index;
+                if(!intent.hasExtra("stage_index"))engine.skip(now());
+                else if(engine.sessionId.equals(intent.getStringExtra("session_id")))engine.skip(now(),intent.getIntExtra("stage_index",-1));
+                if(!engine.finished&&engine.index!=before)signal();
+            }
             if("COMPLETE".equals(action)&&engine.sessionId.equals(intent.getStringExtra("session_id"))&&engine.completeManual(now(),intent.getIntExtra("stage_index",-1))&&!engine.finished)signal();
             if("STOP".equals(action)){engine.tick(now());Store.finish(this,engine,engine.finished);recorded=true;signal(Chime.COMPLETE);engine=null;shutdown();return START_NOT_STICKY;}
         }
@@ -74,7 +81,9 @@ public class TimerService extends Service {
         String label=engine.paused?"继续":"暂停";
         PendingIntent pause=PendingIntent.getService(this,1,new Intent(this,TimerService.class).setAction("PAUSE"),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
         PendingIntent skip=PendingIntent.getService(this,2,new Intent(this,TimerService.class).setAction("SKIP"),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
-        Notification.Builder builder=new Notification.Builder(this,CHANNEL).setSmallIcon(com.strengthtimer.app.R.drawable.ic_app).setContentTitle((engine.paused?"已暂停 · ":"")+(s.manual?"次数训练":s.kind)+" · "+s.name).setContentText((s.manual?"目标 "+s.repetitions+" 次 · 第 "+s.set+"/"+s.sets+" 组":engine.paused?MainActivity.clock(engine.remaining(now())):"剩余时间")+" · 已完成 "+engine.completed+" 组").setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true).setShowWhen(false);
+        String status=s.manual?"目标 "+s.repetitions+" 次 · 第 "+s.set+"/"+s.sets+" 组":engine.paused?MainActivity.clock(engine.remaining(now())):"剩余时间";
+        if(!s.preparation())status+=" · "+MainActivity.doneText(engine,!s.manual);
+        Notification.Builder builder=new Notification.Builder(this,CHANNEL).setSmallIcon(com.strengthtimer.app.R.drawable.ic_app).setContentTitle((engine.paused?"已暂停 · ":"")+(s.manual?"次数训练":s.kind)+" · "+s.name).setContentText(status).setContentIntent(open).setOngoing(true).setOnlyAlertOnce(true).setShowWhen(false);
         if(!s.manual&&!engine.paused)builder.setWhen(System.currentTimeMillis()+engine.remaining(now())).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true);
         if(s.manual&&!engine.paused){Intent complete=new Intent(this,TimerService.class).setAction("COMPLETE").setData(android.net.Uri.parse("strengthtimer://complete/"+engine.sessionId+"/"+engine.index)).putExtra("session_id",engine.sessionId).putExtra("stage_index",engine.index);PendingIntent done=PendingIntent.getService(this,3,complete,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);builder.addAction(new Notification.Action.Builder(null,"完成这一组",done).build());}
         return builder.addAction(new Notification.Action.Builder(null,label,pause).build()).addAction(new Notification.Action.Builder(null,"跳过",skip).build()).build();

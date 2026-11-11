@@ -16,6 +16,8 @@ import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends Activity {
     private static final int BG=0xff101711,CARD=0xff1e2921,ACCENT=0xffcaef76,TEXT=0xfff2f5ed,MUTED=0xffa1afa4,ORANGE=0xffffbb7c;
+    // Widths in dp: one readable column, and the frame that holds two panes on wide screens.
+    private static final int COLUMN=640,FRAME=1100;
     private LinearLayout root,content,header,pageRoot;
     private FrameLayout pageHost;
     private PageTransition pageTransition;
@@ -35,6 +37,7 @@ public class MainActivity extends Activity {
     private boolean wasFinished=false;
     private ScrollView scroller;
     private final List<Dialog> dialogs=new ArrayList<>();
+    private Dialog stageDialog;
     private final Runnable refresh=new Runnable(){public void run(){
         Workout.Engine e=TimerService.engine;
         if(page.equals("timer")&&e!=null){if((e.finished&&!wasFinished)||(!e.finished&&e.index!=displayedStage)){wasFinished=e.finished;showTimer();}else updateTimer();}
@@ -42,14 +45,22 @@ public class MainActivity extends Activity {
         handler.postDelayed(this,100);
     }};
     static String clock(long millis){long s=(Math.max(0,millis)+999)/1000;return String.format(Locale.US,"%02d:%02d",s/60,s%60);}
+    /** Progress inside the current exercise; a stage that belongs to no exercise falls back to the session total. */
+    static String doneText(Workout.Engine e,boolean target){Workout.Stage s=e.current();return s.sets>0?"已完成 "+e.completedInCurrent()+(target?" / "+s.sets:"")+" 组":"本次共完成 "+e.completed+" 组";}
     private String time(int seconds){return seconds>=60?(seconds/60+"分"+(seconds%60==0?"":seconds%60+"秒")):seconds+"秒";}
     private int dp(float n){return (int)(n*getResources().getDisplayMetrics().density+.5f);}
-    @Override public void onCreate(Bundle b){super.onCreate(b);plan=Store.load(this);
+    /** Landscape phones and tablets have room for two panes side by side. */
+    private boolean wide(){android.content.res.Configuration c=getResources().getConfiguration();return c.screenWidthDp>=600&&c.screenWidthDp>c.screenHeightDp;}
+    private int frameWidth(){return Math.min(getResources().getDisplayMetrics().widthPixels-2*dp(20),dp(wide()?FRAME:COLUMN));}
+    /** Phones keep their 20dp margins; wider windows centre a frame of bounded width, clear of cutouts and side bars. */
+    private void frame(int left,int top,int right,int bottom){int side=(getResources().getDisplayMetrics().widthPixels-frameWidth())/2;root.setPadding(Math.max(side,left+dp(20)),top,Math.max(side,right+dp(20)),bottom);}
+    private void applyOrientation(){setRequestedOrientation(Store.prefs(this).getBoolean("lock_portrait",false)?android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT:android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);}
+    @Override public void onCreate(Bundle b){super.onCreate(b);applyOrientation();plan=Store.load(this);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(BG);root.setPadding(dp(20),0,dp(20),0);
-        if(Build.VERSION.SDK_INT>=30)root.setOnApplyWindowInsetsListener((v,insets)->{android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars());root.setPadding(dp(20),bars.top,dp(20),bars.bottom);return insets;});
+        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(BG);frame(0,0,0,0);
+        if(Build.VERSION.SDK_INT>=30)root.setOnApplyWindowInsetsListener((v,insets)->{android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());frame(bars.left,bars.top,bars.right,bars.bottom);return insets;});
         // API 26–29 use legacy insets; modern edge-to-edge devices use the same safe areas.
-        if(Build.VERSION.SDK_INT<30)root.setOnApplyWindowInsetsListener((v,insets)->{root.setPadding(dp(20),insets.getSystemWindowInsetTop(),dp(20),insets.getSystemWindowInsetBottom());return insets;});
+        if(Build.VERSION.SDK_INT<30)root.setOnApplyWindowInsetsListener((v,insets)->{frame(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets;});
         setContentView(root);root.requestApplyInsets();Chime.init(this);
         if(TimerService.engine==null)TimerService.engine=Store.restore(this);
         if(b!=null){ArrayList<String> stack=b.getStringArrayList("backStack");if(stack!=null)backStack.addAll(stack);Bundle positions=b.getBundle("scrollPositions");if(positions!=null)for(String key:positions.keySet())scrollPositions.put(key,positions.getInt(key));pendingExport=b.getString("pendingExport");}
@@ -79,6 +90,8 @@ public class MainActivity extends Activity {
     private void weighted(LinearLayout r,View v){LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.setMargins(dp(3),0,dp(3),0);r.addView(v,lp);}
     private void base(String selected){
         boolean animate=header!=null&&!page.equals(selected);
+        // A sheet that asks about one stage must not stay open over the page of another.
+        if(stageDialog!=null){stageDialog.dismiss();stageDialog=null;}
         if(scroller!=null)scrollPositions.put(page,scroller.getScrollY());
         page=selected;
         if(header==null){
@@ -90,7 +103,16 @@ public class MainActivity extends Activity {
         brand.setText(selected.equals("plan")?"力量 / TIMER":"‹ 返回");brand.setContentDescription(selected.equals("plan")?"力量计时":previous.equals("timer")&&active()?"返回正在进行的训练":previous.equals("history")?"返回训练记录":previous.equals("settings")?"返回设置":"返回训练计划");
         brand.setOnClickListener(selected.equals("plan")?null:v->navigateBack());
         pageRoot=column();pageRoot.setBackgroundColor(BG);scroller=new ScrollView(this);scroller.setFillViewport(true);styleScroll(scroller);content=column();scroller.addView(content);pageRoot.addView(scroller,new LinearLayout.LayoutParams(-1,0,1));
+        // A page with a single column stays readable inside the wider frame.
+        int inset=Math.max(0,(frameWidth()-dp(COLUMN))/2);pageRoot.setPadding(inset,0,inset,0);
         pageTransition.replace(pageRoot,animate,returning);final ScrollView restoredScroll=scroller;final int restoredY=scrollPositions.getOrDefault(selected,0);restoredScroll.post(()->restoredScroll.scrollTo(0,restoredY));
+    }
+    /** Wide windows show a fixed pane beside the scrolling column instead of stacking the two; returns the column's pane. */
+    private LinearLayout split(View side,float weight){
+        pageRoot.removeView(scroller);pageRoot.setPadding(0,0,0,0);LinearLayout panes=new LinearLayout(this),main=column();
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-1,weight);lp.setMarginEnd(dp(20));panes.addView(side,lp);
+        main.addView(scroller,new LinearLayout.LayoutParams(-1,0,1));panes.addView(main,new LinearLayout.LayoutParams(0,-1,1));
+        pageRoot.addView(panes,0,new LinearLayout.LayoutParams(-1,0,1));return main;
     }
     private void toast(String value){TextView message=text(value,14,TEXT);message.setPadding(dp(18),dp(12),dp(18),dp(12));message.setBackground(background(CARD,18));Toast hint=new Toast(this);hint.setView(message);hint.setDuration(Toast.LENGTH_SHORT);hint.setGravity(Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL,0,dp(88));hint.show();}
     private void styleScroll(ScrollView scroll){
@@ -100,11 +122,13 @@ public class MainActivity extends Activity {
         if(Build.VERSION.SDK_INT>=29){scroll.setVerticalScrollbarThumbDrawable(background(0xff53635a,2));scroll.setVerticalScrollbarTrackDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));}
     }
     private void showPlan(){
-        base("plan");content.addView(text("WORKOUT / 今日训练",12,ACCENT));content.addView(bold("今天，练得更稳。",28,TEXT));content.addView(text("长按 ≡ 拖动排序 · 点击卡片编辑",13,MUTED));gap(content,18);
+        // Wide windows keep the summary and the start button in a pane beside the list.
+        base("plan");boolean wide=wide();LinearLayout intro=wide?column():content;
+        intro.addView(text("WORKOUT / 今日训练",12,ACCENT));intro.addView(bold("今天，练得更稳。",28,TEXT));intro.addView(text("长按 ≡ 拖动排序 · 点击卡片编辑",13,MUTED));gap(intro,18);
         List<Workout.Stage> stages=Workout.compileSession(plan);long seconds=0;int sets=0;for(Workout.Stage s:stages){seconds+=s.seconds;if(s.exercise())sets++;}
         int exercises=0,manuals=0;for(Workout.Item item:plan)if(!item.rest){exercises++;if(item.manual)manuals++;}
-        LinearLayout stats=row();weighted(stats,metric("训练动作",String.valueOf(exercises),TEXT));weighted(stats,metric("目标组数",String.valueOf(sets),ACCENT));weighted(stats,metric(manuals>0?"固定用时":"预计用时",time((int)seconds),TEXT));content.addView(stats);if(manuals>0)content.addView(text("另含 "+manuals+" 个次数动作，完成时间由你决定。",12,MUTED));gap(content,16);
-        LinearLayout library=row();weighted(library,button("切换方案",CARD,()->choosePlan()));weighted(library,button("保存方案",CARD,()->savePlan()));content.addView(library);gap(content,18);
+        LinearLayout stats=row();weighted(stats,metric("训练动作",String.valueOf(exercises),TEXT));weighted(stats,metric("目标组数",String.valueOf(sets),ACCENT));weighted(stats,metric(manuals>0?"固定用时":"预计用时",time((int)seconds),TEXT));intro.addView(stats);if(manuals>0)intro.addView(text("另含 "+manuals+" 个次数动作，完成时间由你决定。",12,MUTED));gap(intro,16);
+        LinearLayout library=row();weighted(library,button("切换方案",CARD,()->choosePlan()));weighted(library,button("保存方案",CARD,()->savePlan()));intro.addView(library);gap(intro,18);
         content.addView(bold("训练清单",18,TEXT));gap(content,10);
         if(plan.isEmpty()){content.addView(text("还没有训练动作。添加动作，或从切换方案中选择一个模板。",15,MUTED));gap(content,16);}
         for(int n=0;n<plan.size();n++){
@@ -128,10 +152,11 @@ public class MainActivity extends Activity {
             content.addView(card,new LinearLayout.LayoutParams(-1,-2));gap(content,10);
         }
         LinearLayout add=row();weighted(add,button("＋ 动作",CARD,()->{if(active())toast("结束训练后再修改计划");else edit(-1,false,false);}));weighted(add,button("＋ 休息",CARD,()->{if(active())toast("结束训练后再修改计划");else edit(-1,true,false);}));content.addView(add);gap(content,16);
-        content.addView(text("开始后先准备 5 秒，再进入第一项任务。小休息出现在组与组之间；最后一组后进入大休息。休息可设为 0 秒跳过，也可插入独立休息块自由排序。",12,MUTED));gap(content,20);
+        content.addView(text("开始后先准备 5 秒，再进入第一项任务。小休息出现在组与组之间；最后一组后进入大休息。休息设为 0 秒即可省去，也可插入独立休息块自由排序。",12,MUTED));gap(content,20);
         LinearLayout dock=column();dock.setPadding(0,dp(12),0,dp(2));dock.setBackgroundColor(BG);
         dock.addView(button(active()?"返回正在进行的训练":"开始训练 →",ACCENT,()->{if(active()){showTimer();return;}if(setsCount()==0){toast("至少添加一个训练动作");return;}start();}));
-        pageRoot.addView(dock,new LinearLayout.LayoutParams(-1,-2));
+        if(!wide){pageRoot.addView(dock,new LinearLayout.LayoutParams(-1,-2));return;}
+        ScrollView summary=new ScrollView(this);styleScroll(summary);summary.addView(intro);LinearLayout side=column();side.addView(summary,new LinearLayout.LayoutParams(-1,0,1));side.addView(dock,new LinearLayout.LayoutParams(-1,-2));split(side,.8f);
     }
     private int setsCount(){int n=0;for(Workout.Item i:plan)if(!i.rest)n+=i.sets;return n;}
     private void savePlan(){
@@ -172,11 +197,11 @@ public class MainActivity extends Activity {
         for(String name:names){panel.body.addView(button(name,CARD,()->confirm("删除「"+name+"」？","此操作无法撤销。当前训练清单和历史记录会保留。","删除",()->{Store.deletePlan(this,name);panel.dialog.dismiss();chooser.dialog.dismiss();toast("方案已删除");choosePlan();})));gap(panel.body,10);}
         panel.footer.addView(button("取消",CARD,()->panel.dialog.dismiss()));panel.show(560);
     }
-    private void confirm(String title,String message,String actionLabel,Runnable action){confirm(title,message,"取消",actionLabel,action);}
-    private void confirm(String title,String message,String cancelLabel,String actionLabel,Runnable action){
+    private Dialog confirm(String title,String message,String actionLabel,Runnable action){return confirm(title,message,"取消",actionLabel,action);}
+    private Dialog confirm(String title,String message,String cancelLabel,String actionLabel,Runnable action){
         Panel panel=new Panel("CONFIRM / 确认操作",title,"");
         TextView detail=text(message,15,TEXT);detail.setPadding(dp(16),dp(16),dp(16),dp(16));detail.setBackground(background(CARD,18));panel.body.addView(detail);
-        LinearLayout controls=row();weighted(controls,button(cancelLabel,CARD,()->panel.dialog.dismiss()));weighted(controls,button(actionLabel,ACCENT,()->{action.run();panel.dialog.dismiss();}));panel.footer.addView(controls);panel.show(390);
+        LinearLayout controls=row();weighted(controls,button(cancelLabel,CARD,()->panel.dialog.dismiss()));weighted(controls,button(actionLabel,ACCENT,()->{action.run();panel.dialog.dismiss();}));panel.footer.addView(controls);panel.show(390);return panel.dialog;
     }
     private final class Panel {
         final Dialog dialog=new Dialog(MainActivity.this);
@@ -193,7 +218,8 @@ public class MainActivity extends Activity {
         void show(int height){
             Window window=dialog.getWindow();
             if(window!=null){window.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE|WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);WindowManager.LayoutParams params=window.getAttributes();params.dimAmount=.6f;params.gravity=Gravity.BOTTOM;window.setAttributes(params);}
-            dialogs.add(dialog);dialog.show();if(window!=null)window.setLayout(getResources().getDisplayMetrics().widthPixels-dp(24),Math.min(dp(height),(int)(getResources().getDisplayMetrics().heightPixels*.86f)));
+            // On tablets and in landscape a sheet stays a readable column instead of spanning the screen.
+            dialogs.add(dialog);dialog.show();if(window!=null)window.setLayout(Math.min(getResources().getDisplayMetrics().widthPixels-dp(24),dp(560)),Math.min(dp(height),(int)(getResources().getDisplayMetrics().heightPixels*.86f)));
         }
     }
     private EditText input(LinearLayout parent,String label,String value,boolean numeric){
@@ -251,20 +277,34 @@ public class MainActivity extends Activity {
             wasFinished=true;gap(content,36);content.addView(bold("训练完成 ✓",32,ACCENT));content.addView(text("每一次坚持，都算数。",16,MUTED));gap(content,28);content.addView(bold(e.completed+" 组",56,TEXT));content.addView(text("有效训练 "+time((int)(e.trainedMillis/1000))+" · 跳过 "+e.skipped+" 组",15,MUTED));
             for(Map.Entry<String,Integer> entry:e.counts.entrySet())content.addView(text(entry.getKey()+"  ·  "+entry.getValue()+" 组",18,TEXT));gap(content,24);content.addView(button("查看训练记录",ACCENT,()->openPage("history")));gap(content,12);content.addView(button("回到训练计划",CARD,()->{backStack.clear();returning=true;showPlan();returning=false;}));return;
         }
-        gap(content,24);stageMeta=bold("",15,ACCENT);stageMeta.setGravity(Gravity.CENTER);content.addView(stageMeta);stageTitle=bold("",27,TEXT);stageTitle.setGravity(Gravity.CENTER);content.addView(stageTitle);gap(content,24);
-        FrameLayout dial=new FrameLayout(this);ring=new CountdownRing(this);dial.addView(ring,new FrameLayout.LayoutParams(-1,-1));
-        LinearLayout display=column();display.setGravity(Gravity.CENTER);display.setPadding(dp(32),dp(12),dp(32),dp(12));timer=bold("",64,ACCENT);timer.setGravity(Gravity.CENTER);timer.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);timer.setAutoSizeTextTypeUniformWithConfiguration(28,64,2,android.util.TypedValue.COMPLEX_UNIT_SP);display.addView(timer,new LinearLayout.LayoutParams(-1,dp(90)));countsText=text("",14,MUTED);countsText.setGravity(Gravity.CENTER);display.addView(countsText);dial.addView(display,new FrameLayout.LayoutParams(-1,-1));content.addView(dial,new LinearLayout.LayoutParams(-1,dp(280)));gap(content,22);
+        Workout.Stage stage=e.current();final int shown=e.index;final String session=e.sessionId;
+        boolean wide=wide(),tablet=getResources().getConfiguration().smallestScreenWidthDp>=600,roomy=wide||tablet;
+        stageMeta=bold("",15,ACCENT);stageTitle=bold("",27,TEXT);if(!wide){stageMeta.setGravity(Gravity.CENTER);stageTitle.setGravity(Gravity.CENTER);}
+        timer=bold("",64,ACCENT);timer.setGravity(Gravity.CENTER);timer.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);timer.setAutoSizeTextTypeUniformWithConfiguration(28,roomy?160:64,2,android.util.TypedValue.COMPLEX_UNIT_SP);
+        // Portrait phones keep the fixed dial; roomier layouts give it a square that grows with the space.
+        FrameLayout dial=roomy?new DialLayout(this,timer):new FrameLayout(this);ring=new CountdownRing(this);dial.addView(ring,new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout display=column();display.setGravity(Gravity.CENTER);display.setPadding(dp(32),dp(12),dp(32),dp(12));display.addView(timer,new LinearLayout.LayoutParams(-1,dp(90)));countsText=text("",tablet?20:14,MUTED);countsText.setGravity(Gravity.CENTER);display.addView(countsText);dial.addView(display,new FrameLayout.LayoutParams(-1,-1));
+        // Wide windows put the dial in its own pane, and the stage's own button under the column beside it.
+        LinearLayout host=pageRoot;
+        if(wide){FrameLayout pane=new FrameLayout(this);pane.addView(dial,new FrameLayout.LayoutParams(-1,-1,Gravity.CENTER));host=split(pane,1);content.setGravity(Gravity.CENTER_VERTICAL);content.addView(stageMeta);content.addView(stageTitle);gap(content,16);}
+        else{gap(content,24);content.addView(stageMeta);content.addView(stageTitle);gap(content,24);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(roomy?400:280));lp.gravity=Gravity.CENTER_HORIZONTAL;content.addView(dial,lp);gap(content,22);}
         progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);progress.setMax(1000);
         progress.setProgressDrawable(roundedTrack(3));progress.setProgressTintList(android.content.res.ColorStateList.valueOf(ACCENT));content.addView(progress,new LinearLayout.LayoutParams(-1,dp(6)));gap(content,16);nextText=text("",14,MUTED);content.addView(nextText);gap(content,24);
-        LinearLayout controls=row();pauseButton=button(e.paused?"继续":"暂停",e.current().manual?CARD:ACCENT,()->command("PAUSE"));weighted(controls,pauseButton);weighted(controls,button("跳过当前阶段",CARD,()->confirm("跳过当前阶段？","跳过的训练组不会计入完成次数。","跳过",()->command("SKIP"))));content.addView(controls);gap(content,12);
+        // Each stage names what leaving it early does. The request carries the stage it was confirmed for, so the service ignores it once that stage is over.
+        String leave=stage.preparation()?"直接开始":stage.exercise()?"略过本组":"结束休息",ask=stage.preparation()?"直接开始训练？":stage.exercise()?"略过这一组？":"提前结束休息？";
+        String effect=stage.preparation()?"将结束准备倒计时，马上进入第一项。":stage.exercise()?"这一组不会计入完成次数。":shown+1<e.stages.size()?"将直接进入下一阶段。":"这是最后一段休息，训练将直接完成。";
+        Intent skip=new Intent(this,TimerService.class).setAction("SKIP").putExtra("stage_index",shown).putExtra("session_id",session);
+        LinearLayout controls=row();pauseButton=button(e.paused?"继续":"暂停",stage.manual?CARD:ACCENT,()->command("PAUSE"));weighted(controls,pauseButton);weighted(controls,button(leave,CARD,()->{if(stageDialog!=null)stageDialog.dismiss();stageDialog=confirm(ask,effect,stage.exercise()?"略过":leave,()->startForegroundService(skip));}));content.addView(controls);gap(content,12);
         content.addView(button("结束本次训练",CARD,()->confirm("结束训练？","已完成的组数会保存到训练记录。","继续训练","结束并保存",()->{command("STOP");handler.postDelayed(()->historyAfterEnd(),300);})));gap(content,18);
         content.addView(text("切换应用或锁屏后仍会计时。若被系统强制关闭，下次打开会恢复到暂停状态。",12,MUTED));updateTimer();
-        if(e.current().manual){final int expectedStage=e.index;final String session=e.sessionId;LinearLayout dock=column();dock.setPadding(0,dp(12),0,dp(2));doneButton=button("完成这一组 →",ACCENT,()->{doneButton.setEnabled(false);startForegroundService(new Intent(this,TimerService.class).setAction("COMPLETE").putExtra("stage_index",expectedStage).putExtra("session_id",session));});dock.addView(doneButton);pageRoot.addView(dock,new LinearLayout.LayoutParams(-1,-2));updateTimer();}
+        if(stage.manual){LinearLayout dock=column();dock.setPadding(0,dp(12),0,dp(2));doneButton=button("完成这一组 →",ACCENT,()->{doneButton.setEnabled(false);startForegroundService(new Intent(this,TimerService.class).setAction("COMPLETE").putExtra("stage_index",shown).putExtra("session_id",session));});dock.addView(doneButton);host.addView(dock,new LinearLayout.LayoutParams(-1,-2));updateTimer();}
     }
     private void updateTimer(){
         Workout.Engine e=TimerService.engine;if(e==null||e.finished||timer==null)return;Workout.Stage s=e.current();
         int stageColor=s.exercise()||s.preparation()?ACCENT:ORANGE;
-        stageMeta.setText((e.paused?"已暂停 · ":"")+(s.preparation()?"准备 · 第一项任务即将开始":(s.manual?"次数训练":s.kind)+" / "+(e.index+1)+" OF "+e.stages.size()));stageMeta.setTextColor(stageColor);stageTitle.setText(s.name);timer.setText(s.manual?s.repetitions+" 次":clock(e.remaining(TimerService.now())));timer.setTextColor(stageColor);countsText.setText(s.preparation()?"调整姿势 · 准备好再开始":s.exercise()?(s.manual?"手动完成 · ":"")+"第 "+s.set+" / "+s.sets+" 组 · 已完成 "+e.completed+" 组":"放松呼吸 · 已完成 "+e.completed+" 组");pauseButton.setText(e.paused?"继续":"暂停");
+        // The preparation countdown is not one of the plan's stages, so it is left out of the numbering.
+        int lead=e.stages.get(0).preparation()?1:0;
+        stageMeta.setText((e.paused?"已暂停 · ":"")+(s.preparation()?"准备 · 第一项任务即将开始":(s.manual?"次数训练":s.kind)+" / "+(e.index+1-lead)+" OF "+(e.stages.size()-lead)));stageMeta.setTextColor(stageColor);stageTitle.setText(s.name);timer.setText(s.manual?s.repetitions+" 次":clock(e.remaining(TimerService.now())));timer.setTextColor(stageColor);countsText.setText(s.preparation()?"调整姿势 · 准备好再开始":s.exercise()?(s.manual?"手动完成 · ":"")+"第 "+s.set+" / "+s.sets+" 组 · "+doneText(e,false):"放松呼吸 · "+doneText(e,true));pauseButton.setText(e.paused?"继续":"暂停");
         if(doneButton!=null){doneButton.setEnabled(!e.paused);doneButton.setAlpha(e.paused?.45f:1);doneButton.setText(e.paused?"继续后完成这一组":"完成这一组 →");}
         progress.setProgress((int)(1000*e.progressFraction(TimerService.now())));
         ring.update(s.manual?1:e.remaining(TimerService.now()),s.manual?1:s.seconds*1000L,stageColor);
@@ -327,6 +367,8 @@ public class MainActivity extends Activity {
         slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}public void onProgressChanged(SeekBar s,int value,boolean user){volume.setText("音效与朗读音量 · "+value+"%");if(user)Store.prefs(MainActivity.this).edit().putInt("sound_volume",value).apply();}});
         audio.addView(text("音效与读秒共用音量，叠加手机闹钟音量；试听不受音效开关影响。",12,MUTED));gap(audio,8);
         LinearLayout previews=row();weighted(previews,button("试听开始",BG,()->Chime.play(this,Chime.TRAINING)));weighted(previews,button("试听暂停 / 结束",BG,()->Chime.play(this,Chime.COMPLETE)));audio.addView(previews);box.addView(audio);gap(box,14);
+        gap(box,8);box.addView(bold("屏幕方向",18,TEXT));gap(box,10);
+        box.addView(settingToggle("锁定竖屏","开启后不随设备旋转。关闭时跟随系统的自动旋转，横屏和平板会左右分栏显示","lock_portrait",false,this::applyOrientation));gap(box,14);
         box.addView(button("读秒录音来源与许可  ›",CARD,this::voiceCredits));gap(box,14);
         box.addView(button("后台计时与朗读设置  ›",CARD,this::backgroundSettings));gap(box,14);
         box.addView(text("力量计时 "+BuildConfig.VERSION_NAME+" · 离线使用\n方案与训练记录保存在本机",12,MUTED));gap(box,20);
@@ -361,12 +403,15 @@ public class MainActivity extends Activity {
         panel.body.addView(text("例如设置 10 秒，就会朗读「10、9……2、1」。阶段短于起读秒数时，从当前剩余秒数开始；暂停时停止朗读。",13,MUTED));
         LinearLayout controls=row();weighted(controls,button("取消",CARD,()->panel.dialog.dismiss()));weighted(controls,button("保存",ACCENT,()->{try{int value=number(seconds,1,60);Store.prefs(this).edit().putInt(key+"_seconds",value).apply();trigger.setText("剩余 "+value+" 秒时开始  ›");panel.dialog.dismiss();}catch(IllegalArgumentException ignored){/* The input card shows the range error. */}}));panel.footer.addView(controls);panel.show(490);
     }
-    private View settingToggle(String title,String subtitle,String key){
+    private View settingToggle(String title,String subtitle,String key){return settingToggle(title,subtitle,key,true,null);}
+    private View settingToggle(String title,String subtitle,String key,boolean defaultOn,Runnable changed){
         LinearLayout card=row();card.setPadding(dp(16),dp(12),dp(12),dp(12));card.setBackground(background(CARD,18));LinearLayout labels=column();labels.addView(bold(title,15,TEXT));labels.addView(text(subtitle,12,MUTED));card.addView(labels,new LinearLayout.LayoutParams(0,-2,1));
-        Switch toggle=preferenceToggle(title,key,true);card.addView(toggle);card.setOnClickListener(v->toggle.setChecked(!toggle.isChecked()));return card;
+        Switch toggle=preferenceToggle(title,key,defaultOn,changed);card.addView(toggle);card.setOnClickListener(v->toggle.setChecked(!toggle.isChecked()));return card;
     }
-    private Switch preferenceToggle(String title,String key,boolean defaultOn){
-        Switch toggle=styledToggle(title,Store.prefs(this).getBoolean(key,defaultOn));toggle.setOnCheckedChangeListener((b,on)->Store.prefs(this).edit().putBoolean(key,on).apply());return toggle;
+    private Switch preferenceToggle(String title,String key,boolean defaultOn){return preferenceToggle(title,key,defaultOn,null);}
+    /** Saves the switch; a setting that takes effect at once passes what to do after the save. */
+    private Switch preferenceToggle(String title,String key,boolean defaultOn,Runnable changed){
+        Switch toggle=styledToggle(title,Store.prefs(this).getBoolean(key,defaultOn));toggle.setOnCheckedChangeListener((b,on)->{Store.prefs(this).edit().putBoolean(key,on).apply();if(changed!=null)changed.run();});return toggle;
     }
     private Switch styledToggle(String title,boolean on){
         Switch toggle=new Switch(this);toggle.setContentDescription(title);toggle.setMinHeight(dp(48));toggle.setMinWidth(dp(48));toggle.setChecked(on);
