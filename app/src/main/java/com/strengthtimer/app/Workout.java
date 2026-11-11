@@ -52,6 +52,8 @@ public final class Workout {
     public static final class Engine {
         public final List<Stage> stages;
         public final Map<String,Integer> counts=new LinkedHashMap<>();
+        /** Completed sets per plan item, so the timer can show progress inside the current exercise. */
+        public final Map<Integer,Integer> itemCounts=new HashMap<>();
         public int index=0, completed=0, skipped=0;
         public long deadline, remaining, trainedMillis;
         public boolean paused=false, finished=false;
@@ -70,10 +72,23 @@ public final class Workout {
             int transitions=0;
             while(!paused && !finished && !current().manual && now>=deadline) {
                 Stage s=current();
-                if(s.exercise()) { completed++; counts.put(s.name,counts.getOrDefault(s.name,0)+1); trainedMillis+=s.seconds*1000L; }
+                if(s.exercise()) complete(s,s.seconds*1000L);
                 advance(deadline); transitions++;
             }
             return transitions;
+        }
+        private void complete(Stage s,long trained) {
+            completed++; counts.put(s.name,counts.getOrDefault(s.name,0)+1); itemCounts.put(s.itemIndex,itemCounts.getOrDefault(s.itemIndex,0)+1); trainedMillis+=trained;
+        }
+        /** Sets already completed in the exercise that owns the current stage; 0 for preparation and standalone rests. */
+        public int completedInCurrent() { return finished?0:itemCounts.getOrDefault(current().itemIndex,0); }
+        /** Snapshots saved before per-item counts existed only know totals per name; hand those to the sets already passed. */
+        public void rebuildItemCounts() {
+            itemCounts.clear(); Map<String,Integer> open=new HashMap<>(counts);
+            for(int n=0;n<Math.min(index,stages.size());n++) {
+                Stage s=stages.get(n); int left=open.getOrDefault(s.name,0);
+                if(s.exercise()&&left>0) { open.put(s.name,left-1); itemCounts.put(s.itemIndex,itemCounts.getOrDefault(s.itemIndex,0)+1); }
+            }
         }
         private void advance(long now) {
             index++;
@@ -84,12 +99,17 @@ public final class Workout {
         public void resume(long now) { if(paused&&!finished) { paused=false;deadline=now+remaining;manualStartedAt=now; } }
         public boolean completeManual(long now,int expectedIndex){
             if(finished||paused||index!=expectedIndex||!current().manual)return false;
-            Stage s=current();completed++;counts.put(s.name,counts.getOrDefault(s.name,0)+1);trainedMillis+=manualElapsedMillis(now);advance(now);return true;
+            complete(current(),manualElapsedMillis(now));advance(now);return true;
         }
         public void skip(long now) {
             tick(now); if(finished) return;
             if(current().exercise()) skipped++;
             advance(now);
+        }
+        /** Skips only the stage the caller was looking at; one that already ended on its own is left alone. */
+        public boolean skip(long now,int expectedIndex) {
+            tick(now); if(finished||index!=expectedIndex) return false;
+            skip(now); return true;
         }
         public long totalMillis() { long total=0;for(Stage s:stages) total+=s.seconds*1000L;return total; }
         public boolean hasManualStages(){for(Stage s:stages)if(s.manual)return true;return false;}

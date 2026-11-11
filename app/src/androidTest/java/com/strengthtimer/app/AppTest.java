@@ -54,7 +54,7 @@ public class AppTest {
         try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
             onView(withText("开始训练 →")).perform(click());skipPreparation();SystemClock.sleep(700);shot("02-training");
             onView(withText("暂停")).perform(scrollTo(),click());SystemClock.sleep(500);assertTrue(TimerService.engine.paused);
-            onView(withText("跳过当前阶段")).perform(scrollTo(),click());onView(withText("跳过")).inRoot(isDialog()).perform(click());SystemClock.sleep(500);assertEquals(0,TimerService.engine.completed);assertEquals(1,TimerService.engine.skipped);assertEquals("小休息",TimerService.engine.current().kind);shot("03-rest-paused");
+            onView(withText("略过本组")).perform(scrollTo(),click());onView(withText("略过")).inRoot(isDialog()).perform(click());SystemClock.sleep(500);assertEquals(0,TimerService.engine.completed);assertEquals(1,TimerService.engine.skipped);assertEquals("小休息",TimerService.engine.current().kind);shot("03-rest-paused");
             onView(withText("结束本次训练")).perform(scrollTo(),click());onView(withText("结束并保存")).inRoot(isDialog()).perform(click());SystemClock.sleep(700);assertEquals(1,Store.history(context).length());assertEquals(0,Store.history(context).getJSONObject(0).getInt("count"));shot("04-history");
         }
     }
@@ -79,7 +79,7 @@ public class AppTest {
             assertTrue(remaining>0&&remaining<=5000);a.recreate();SystemClock.sleep(300);
             assertSame(running,TimerService.engine);assertEquals(remaining,running.remaining(TimerService.now()));assertEquals(0,running.completed);assertEquals(0,running.trainedMillis);
             onView(withText("准备开始")).check(matches(isDisplayed()));onView(withText("继续")).perform(scrollTo()).check(matches(isDisplayed()));shot("20-preparation-paused");
-            onView(withText("跳过当前阶段")).perform(scrollTo(),click());onView(withText("跳过")).inRoot(isDialog()).perform(click());SystemClock.sleep(400);
+            onView(withText("直接开始")).perform(scrollTo(),click());onView(withText("直接开始")).inRoot(isDialog()).perform(click());SystemClock.sleep(400);
             assertEquals("准备验证",running.current().name);assertEquals(1,running.index);assertEquals(0,running.completed);assertEquals(0,running.skipped);assertTrue(running.paused);
             onView(withText("准备开始")).check(doesNotExist());
             onView(withText("继续")).perform(scrollTo(),click());SystemClock.sleep(200);assertFalse(running.paused);
@@ -249,6 +249,64 @@ public class AppTest {
         org.json.JSONObject original=new org.json.JSONObject().put("date",1760400012345L).put("complete",false).put("count",2).put("seconds",45).put("skipped",1).put("counts",new org.json.JSONObject().put("哑铃\" A,\n划船",2)).put("extra","保留");
         Store.prefs(context).edit().putString("history",new org.json.JSONArray().put(original).toString()).commit();org.json.JSONArray records=Store.history(context);String id=records.getJSONObject(0).getString("id");String csv=HistoryExport.csv(records,TimeZone.getTimeZone("Asia/Shanghai"));assertTrue(csv.startsWith("\uFEFF\"记录编号\""));assertTrue(csv.contains("+08:00"));assertTrue(csv.contains("提前结束"));assertTrue(csv.contains("哑铃"));org.json.JSONObject json=new org.json.JSONObject(HistoryExport.json(records,123,TimeZone.getTimeZone("Asia/Shanghai")));assertEquals(records.toString(),json.getJSONArray("records").toString());
         Workout.Engine newer=new Workout.Engine(Workout.compile(Arrays.asList(new Workout.Item("新训练",1,1,0,0))),0);newer.tick(1000);Store.finish(context,newer,true);assertEquals(1,Store.deleteHistory(context,Collections.singleton(id)));assertEquals(1,Store.history(context).length());assertNotEquals(id,Store.history(context).getJSONObject(0).getString("id"));assertEquals(0,Store.deleteHistory(context,Collections.singleton(id)));
+    }
+    @Test public void ringCountsTheCurrentExerciseAndStaleSheetCloses()throws Exception{
+        Store.save(context,Arrays.asList(new Workout.Item("热身",2,1,0,0),new Workout.Item("主项",30,2,20,10)));
+        try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
+            // Both clicks share one main-thread turn, so the sheet is certainly opened during preparation.
+            a.onActivity(activity->{findText(activity.getWindow().getDecorView(),"开始训练 →").performClick();assertTrue(TimerService.engine.current().preparation());findText(pageView(activity),"直接开始").performClick();});
+            onView(withText("直接开始训练？")).inRoot(isDialog()).check(matches(isDisplayed()));
+            // Preparation and the 2-second warm-up end on their own; the unanswered sheet has to leave with its stage.
+            SystemClock.sleep(8500);onView(withText("直接开始训练？")).check(doesNotExist());
+            assertEquals("主项",TimerService.engine.current().name);assertEquals(2,TimerService.engine.index);assertEquals(1,TimerService.engine.completed);assertEquals(0,TimerService.engine.skipped);
+            // The warm-up's set counts towards the session, not towards the exercise now on screen.
+            onView(withText("第 1 / 2 组 · 已完成 0 组")).check(matches(isDisplayed()));shot("21-second-exercise");
+        }
+    }
+    @Test public void snapshotKeepsPerExerciseCountsAndDropsABrokenIndex()throws Exception{
+        Workout.Engine live=new Workout.Engine(Workout.compileSession(Arrays.asList(new Workout.Item("热身",1,1,0,0),new Workout.Item("主项",30,2,20,10))),0);live.tick(6500);
+        Store.session(context,live,6500);Workout.Engine restored=Store.restore(context);
+        assertEquals(2,restored.index);assertEquals(1,restored.completed);assertEquals(live.itemCounts,restored.itemCounts);assertEquals(0,restored.completedInCurrent());
+        // Snapshots written before per-exercise counts existed are rebuilt from the totals per name.
+        org.json.JSONObject old=new org.json.JSONObject(Store.prefs(context).getString("session",null));old.remove("itemCounts");Store.prefs(context).edit().putString("session",old.toString()).commit();
+        assertEquals(live.itemCounts,Store.restore(context).itemCounts);
+        // An index outside the timeline is dropped instead of crashing every later launch.
+        Store.prefs(context).edit().putString("session",old.put("index",99).toString()).commit();assertNull(Store.restore(context));assertNull(Store.prefs(context).getString("session",null));
+    }
+    void awaitOrientation(ActivityScenario<MainActivity> a,int orientation){
+        // Turning the screen recreates the activity; wait for the instance that has the new shape.
+        long deadline=SystemClock.elapsedRealtime()+15000;int[] current={0,0};
+        do{
+            a.onActivity(activity->{current[0]=activity.getResources().getConfiguration().orientation;current[1]=activity.getRequestedOrientation();});
+            if(current[0]==orientation){InstrumentationRegistry.getInstrumentation().waitForIdleSync();SystemClock.sleep(500);return;}
+            SystemClock.sleep(100);
+        }while(SystemClock.elapsedRealtime()<deadline);
+        android.content.ContentResolver resolver=context.getContentResolver();
+        fail("Screen did not turn within 15 seconds: orientation="+current[0]+" requested="+current[1]+" autoRotate="+android.provider.Settings.System.getInt(resolver,android.provider.Settings.System.ACCELEROMETER_ROTATION,-1)+" userRotation="+android.provider.Settings.System.getInt(resolver,android.provider.Settings.System.USER_ROTATION,-1));
+    }
+    @Test public void landscapeSplitsThePagesAndPortraitLockTurnsBack()throws Exception{
+        Store.save(context,Arrays.asList(new Workout.Item("横屏验证",30,2,20,10)));
+        android.app.UiAutomation automation=InstrumentationRegistry.getInstrumentation().getUiAutomation();
+        boolean auto=android.provider.Settings.System.getInt(context.getContentResolver(),android.provider.Settings.System.ACCELEROMETER_ROTATION,0)==1;
+        try(ActivityScenario<MainActivity> a=ActivityScenario.launch(MainActivity.class)){
+            automation.setRotation(android.app.UiAutomation.ROTATION_FREEZE_90);awaitOrientation(a,android.content.res.Configuration.ORIENTATION_LANDSCAPE);shot("22-landscape-plan");
+            // The summary and the start button have their own pane, left of the list.
+            a.onActivity(activity->{int[] start=new int[2],card=new int[2];View button=findText(activity.getWindow().getDecorView(),"开始训练 →");button.getLocationOnScreen(start);findText(pageView(activity),"横屏验证").getLocationOnScreen(card);assertTrue(button.getWidth()>0);assertTrue(start[0]+button.getWidth()<=card[0]);});
+            onView(withText("开始训练 →")).perform(click());skipPreparation();SystemClock.sleep(700);shot("23-landscape-training");
+            // The dial has the left pane to itself, and the controls stay beside it.
+            a.onActivity(activity->{int[] dial=new int[2],pause=new int[2];View counts=findText(pageView(activity),"第 1 / 2 组 · 已完成 0 组");assertNotNull(counts);counts.getLocationOnScreen(dial);findText(pageView(activity),"暂停").getLocationOnScreen(pause);assertTrue(counts.getWidth()>0);assertTrue(dial[0]+counts.getWidth()<=pause[0]);});
+            onView(withText("设置")).perform(click());SystemClock.sleep(500);onView(withContentDescription("锁定竖屏")).perform(scrollTo());shot("24-landscape-settings");
+            onView(withContentDescription("锁定竖屏")).perform(click());awaitOrientation(a,android.content.res.Configuration.ORIENTATION_PORTRAIT);
+            assertTrue(Store.prefs(context).getBoolean("lock_portrait",false));a.onActivity(activity->assertEquals(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,activity.getRequestedOrientation()));
+            onView(withContentDescription("锁定竖屏")).perform(scrollTo()).check(matches(isChecked()));
+            // Unlocking hands the choice back to the system. The emulator can meanwhile fall back to its upright sensor, so the test turns the screen again.
+            onView(withContentDescription("锁定竖屏")).perform(click());assertFalse(Store.prefs(context).getBoolean("lock_portrait",true));
+            a.onActivity(activity->assertEquals(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,activity.getRequestedOrientation()));
+            automation.setRotation(android.app.UiAutomation.ROTATION_FREEZE_90);awaitOrientation(a,android.content.res.Configuration.ORIENTATION_LANDSCAPE);
+        }finally{
+            // Later tests expect the upright screen, with auto-rotation left as it was found.
+            automation.setRotation(android.app.UiAutomation.ROTATION_FREEZE_0);SystemClock.sleep(1500);if(auto)automation.setRotation(android.app.UiAutomation.ROTATION_UNFREEZE);
+        }
     }
     @After public void cleanup(){InstrumentationRegistry.getInstrumentation().runOnMainSync(()->context.stopService(new Intent(context,TimerService.class)));}
 }

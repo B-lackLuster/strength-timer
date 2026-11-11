@@ -53,7 +53,9 @@ final class Store {
         if(e==null||e.finished)return;
         try {
             JSONArray stages=new JSONArray();for(Workout.Stage s:e.stages)stages.put(new JSONObject().put("name",s.name).put("kind",s.kind).put("seconds",s.seconds).put("set",s.set).put("sets",s.sets).put("item",s.itemIndex).put("manual",s.manual).put("repetitions",s.repetitions));
-            JSONObject o=new JSONObject().put("stages",stages).put("index",e.index).put("remaining",e.remaining(now)).put("completed",e.completed).put("skipped",e.skipped).put("trained",e.trainedMillis).put("counts",new JSONObject(e.counts)).put("sessionId",e.sessionId).put("manualElapsed",e.manualElapsedMillis(now));
+            // JSONObject(Map) only accepts String keys, so the per-item counts are written entry by entry.
+            JSONObject itemCounts=new JSONObject();for(Map.Entry<Integer,Integer> entry:e.itemCounts.entrySet())itemCounts.put(String.valueOf(entry.getKey()),entry.getValue());
+            JSONObject o=new JSONObject().put("stages",stages).put("index",e.index).put("remaining",e.remaining(now)).put("completed",e.completed).put("skipped",e.skipped).put("trained",e.trainedMillis).put("counts",new JSONObject(e.counts)).put("itemCounts",itemCounts).put("sessionId",e.sessionId).put("manualElapsed",e.manualElapsedMillis(now));
             prefs(c).edit().putString("session",o.toString()).apply();
         }catch(JSONException ignored){}
     }
@@ -62,7 +64,13 @@ final class Store {
             String raw=prefs(c).getString("session",null);if(raw==null)return null;JSONObject o=new JSONObject(raw);JSONArray a=o.getJSONArray("stages");List<Workout.Stage> stages=new ArrayList<>();
             for(int n=0;n<a.length();n++){JSONObject s=a.getJSONObject(n);Workout.Stage stage=new Workout.Stage(s.getString("name"),s.getString("kind"),s.getInt("seconds"),s.getInt("set"),s.getInt("sets"),s.getInt("item"));stage.manual=stage.exercise()&&s.optBoolean("manual",false);stage.repetitions=s.optInt("repetitions",12);stages.add(stage);}
             Workout.Engine e=new Workout.Engine(stages,android.os.SystemClock.elapsedRealtime());e.index=o.getInt("index");e.remaining=o.getLong("remaining");e.completed=o.getInt("completed");e.skipped=o.getInt("skipped");e.trainedMillis=o.getLong("trained");e.sessionId=o.optString("sessionId",e.sessionId);e.manualElapsed=o.optLong("manualElapsed",0);e.paused=true;
-            JSONObject counts=o.getJSONObject("counts");Iterator<String> keys=counts.keys();while(keys.hasNext()){String k=keys.next();e.counts.put(k,counts.getInt(k));}return e;
+            // A stage index outside the saved timeline would crash every later launch; drop such a snapshot instead.
+            if(e.index<0||e.index>=stages.size())throw new JSONException("Stage index out of range");
+            JSONObject counts=o.getJSONObject("counts");Iterator<String> keys=counts.keys();while(keys.hasNext()){String k=keys.next();e.counts.put(k,counts.getInt(k));}
+            JSONObject itemCounts=o.optJSONObject("itemCounts");
+            if(itemCounts==null)e.rebuildItemCounts();
+            else for(Iterator<String> items=itemCounts.keys();items.hasNext();){String k=items.next();try{e.itemCounts.put(Integer.parseInt(k),itemCounts.optInt(k));}catch(NumberFormatException ignored){}}
+            return e;
         }catch(Exception e){prefs(c).edit().remove("session").apply();return null;}
     }
 }
